@@ -84,7 +84,8 @@ typings/
 
 # Gatsby files
 .cache/
-public
+# Only ignore Gatsby's public folder, not React's
+gatsby/public
 
 # Vuepress build output
 .vuepress/dist
