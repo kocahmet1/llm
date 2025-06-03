@@ -65,7 +65,7 @@ const openai = new OpenAI({
 console.log('- OpenAI client initialized');
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 console.log('- Gemini client initialized');
 
 const anthropic = new Anthropic({
@@ -97,34 +97,39 @@ async function callOpenAI(imagePath, prompt) {
     const base64Image = imageToBase64(imagePath);
     console.log('- Image converted to base64, length:', base64Image.length);
     
-    const response = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: "o4-mini",
-      messages: [
+      input: [
         {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
-              }
-            }
-          ]
+          type: "text",
+          text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
+        },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:image/jpeg;base64,${base64Image}`
+          }
         }
       ],
-      max_completion_tokens: 1000
+      text: {
+        format: {
+          type: "text"
+        }
+      },
+      reasoning: {
+        effort: "high",
+        summary: "auto"
+      },
+      tools: [],
+      store: true
     });
     
     console.log('🔴 OpenAI: Response received');
-    console.log('- Response:', response.choices[0].message.content);
+    console.log('- Response:', response.text);
     
     return {
       success: true,
-      response: response.choices[0].message.content,
+      response: response.text,
       model: "o4-mini"
     };
   } catch (error) {
@@ -140,7 +145,7 @@ async function callOpenAI(imagePath, prompt) {
 
 async function callGemini(imagePath, prompt) {
   console.log('🟡 Gemini: Starting API call...');
-  console.log('- Model: gemini-2.5-flash-preview-05-20');
+  console.log('- Model: gemini-2.0-flash');
   console.log('- Image path:', imagePath);
   console.log('- Prompt:', prompt || 'Default prompt');
   
@@ -173,7 +178,7 @@ async function callGemini(imagePath, prompt) {
     return {
       success: true,
       response: responseText,
-      model: "gemini-2.5-flash-preview-05-20"
+      model: "gemini-2.0-flash"
     };
   } catch (error) {
     console.error('🟡 Gemini: ERROR -', error.message);
@@ -181,7 +186,7 @@ async function callGemini(imagePath, prompt) {
     return {
       success: false,
       error: error.message,
-      model: "gemini-2.5-flash-preview-05-20"
+      model: "gemini-2.0-flash"
     };
   }
 }
@@ -202,7 +207,11 @@ async function callClaude(imagePath, prompt) {
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
+      max_tokens: 16000,
+      thinking: {
+        type: "enabled",
+        budget_tokens: 10000
+      },
       messages: [
         {
           role: "user",
@@ -225,11 +234,25 @@ async function callClaude(imagePath, prompt) {
     });
     
     console.log('🟣 Claude: Response received');
-    console.log('- Response:', response.content[0].text);
+    
+    // Handle both thinking and text blocks
+    let responseText = '';
+    let thinkingSummary = '';
+    
+    for (const block of response.content) {
+      if (block.type === "thinking") {
+        thinkingSummary = block.thinking;
+        console.log('- Thinking summary:', thinkingSummary.substring(0, 100) + '...');
+      } else if (block.type === "text") {
+        responseText = block.text;
+        console.log('- Response:', responseText);
+      }
+    }
     
     return {
       success: true,
-      response: response.content[0].text,
+      response: responseText,
+      thinking: thinkingSummary,
       model: "claude-sonnet-4-20250514"
     };
   } catch (error) {
