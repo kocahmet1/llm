@@ -298,4 +298,127 @@ code {
   .dropzone {
     padding: 30px 20px;
   }
+}
+
+/* NEW: Batch Mode Toggle Styles */
+.batch-mode-section {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9ff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.batch-mode-toggle {
+  margin-bottom: 10px;
+}
+
+.batch-mode-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 10px;
+}
+
+.batch-mode-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.batch-mode-text {
+  color: #2d3748;
+  font-size: 1rem;
+}
+
+.batch-mode-info {
+  font-size: 0.9rem;
+  margin-left: 28px;
+}
+
+.batch-mode-enabled {
+  color: #38a169;
+  font-weight: 500;
+}
+
+.batch-mode-disabled {
+  color: #d69e2e;
+  font-weight: 500;
+}
+
+.batch-mode-section:hover {
+  background: #f0f2ff;
+  border-color: #667eea;
+}
+
+/* NEW: Batch Info Card Styles */
+.batch-info-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 25px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  border: 2px solid transparent;
+}
+
+.batch-info-card.batch-success {
+  border-color: #48bb78;
+  background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+}
+
+.batch-info-card.batch-individual {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e6e9ff 100%);
+}
+
+.batch-success-content h3,
+.batch-individual-content h3 {
+  margin: 0 0 10px 0;
+  color: #2d3748;
+  font-size: 1.3rem;
+}
+
+.batch-success-content p,
+.batch-individual-content p {
+  margin: 8px 0;
+  color: #4a5568;
+  font-size: 1rem;
+}
+
+.batch-benefits {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.benefit {
+  background: rgba(72, 187, 120, 0.1);
+  color: #38a169;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid rgba(72, 187, 120, 0.2);
+}
+
+.batch-tip {
+  background: rgba(102, 126, 234, 0.1);
+  color: #5a67d8;
+  padding: 10px;
+  border-radius: 8px;
+  font-style: italic;
+  border-left: 4px solid #667eea;
+  margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .batch-benefits {
+    gap: 8px;
+  }
+  
+  .benefit {
+    font-size: 0.8rem;
+    padding: 4px 8px;
+  }
 } 

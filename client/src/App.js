@@ -10,6 +10,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [error, setError] = useState('');
+  const [batchMode, setBatchMode] = useState(true);
+  const [batchInfo, setBatchInfo] = useState(null);
 
   const onDrop = useCallback((acceptedFiles) => {
     setFiles(prev => [...prev, ...acceptedFiles]);
@@ -46,6 +48,7 @@ function App() {
     setLoading(true);
     setError('');
     setResults([]);
+    setBatchInfo(null);
 
     try {
       const formData = new FormData();
@@ -57,7 +60,11 @@ function App() {
         formData.append('prompt', prompt);
       }
 
-      const response = await axios.post('/api/analyze', formData, {
+      const endpoint = (batchMode && files.length > 1) ? '/api/analyze-batch' : '/api/analyze';
+      
+      console.log(`Using ${endpoint} for ${files.length} files (batch mode: ${batchMode})`);
+
+      const response = await axios.post(endpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -65,6 +72,21 @@ function App() {
       });
 
       setResults(response.data.results);
+      
+      if (response.data.batchProcessed) {
+        setBatchInfo({
+          enabled: true,
+          apiCallsSaved: response.data.originalApiCallsSaved,
+          totalImages: files.length
+        });
+        console.log(`Batch processing saved ${response.data.originalApiCallsSaved} API calls!`);
+      } else {
+        setBatchInfo({
+          enabled: false,
+          totalApiCalls: files.length * 2,
+          totalImages: files.length
+        });
+      }
     } catch (err) {
       console.error('Analysis error:', err);
       setError(
@@ -154,6 +176,36 @@ function App() {
           </div>
         )}
 
+        {files.length > 1 && (
+          <div className="batch-mode-section">
+            <div className="batch-mode-toggle">
+              <label htmlFor="batchMode" className="batch-mode-label">
+                <input
+                  id="batchMode"
+                  type="checkbox"
+                  checked={batchMode}
+                  onChange={(e) => setBatchMode(e.target.checked)}
+                  className="batch-mode-checkbox"
+                />
+                <span className="batch-mode-text">
+                  🚀 <strong>Batch Mode</strong> - Process all images in 2 API calls instead of {files.length * 2}
+                </span>
+              </label>
+            </div>
+            <div className="batch-mode-info">
+              {batchMode ? (
+                <span className="batch-mode-enabled">
+                  ✅ Enabled: Faster processing, lower costs, single combined analysis
+                </span>
+              ) : (
+                <span className="batch-mode-disabled">
+                  ⚠️ Disabled: Each image processed separately (more API calls)
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         <textarea
           className="prompt-input"
           placeholder="Optional: Add a custom prompt or question (leave empty for default analysis)"
@@ -161,7 +213,7 @@ function App() {
           onChange={(e) => setPrompt(e.target.value)}
         />
 
-        <button 
+        <button
           className="analyze-button"
           onClick={handleAnalyze}
           disabled={loading || files.length === 0}
@@ -172,7 +224,14 @@ function App() {
               Analyzing with AI models...
             </div>
           ) : (
-            'Analyze Images'
+            <>
+              {batchMode && files.length > 1 
+                ? `🚀 Analyze ${files.length} Images (Batch Mode)`
+                : files.length > 1 
+                  ? `Analyze ${files.length} Images (Individual Mode)`
+                  : 'Analyze Image'
+              }
+            </>
           )}
         </button>
 
@@ -195,6 +254,35 @@ function App() {
             Analysis Results
           </h2>
           
+          {batchInfo && (
+            <div className={`batch-info-card ${batchInfo.enabled ? 'batch-success' : 'batch-individual'}`}>
+              {batchInfo.enabled ? (
+                <div className="batch-success-content">
+                  <h3>🚀 Batch Processing Used!</h3>
+                  <p>
+                    Processed <strong>{batchInfo.totalImages} images</strong> with just <strong>2 API calls</strong> 
+                    (saved <strong>{batchInfo.apiCallsSaved} API calls</strong>!)
+                  </p>
+                  <div className="batch-benefits">
+                    <span className="benefit">⚡ Faster processing</span>
+                    <span className="benefit">💰 Lower costs</span>
+                    <span className="benefit">🧠 Better cross-image analysis</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="batch-individual-content">
+                  <h3>📊 Individual Processing Used</h3>
+                  <p>
+                    Processed <strong>{batchInfo.totalImages} images</strong> with <strong>{batchInfo.totalApiCalls} API calls</strong>
+                  </p>
+                  <p className="batch-tip">
+                    💡 Tip: Enable batch mode for multiple images to save API calls and get faster results!
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {results.map((result, index) => (
             <div key={index} className="result-card">
               <div className="result-header">
