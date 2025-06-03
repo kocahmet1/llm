@@ -9,7 +9,6 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const { OpenAI } = require('openai');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
@@ -18,7 +17,6 @@ const PORT = process.env.PORT || 3000;
 // Debug: Check environment variables
 console.log('🔧 Environment Check:');
 console.log('- OpenAI API Key:', process.env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing');
-console.log('- Google API Key:', process.env.GOOGLE_API_KEY ? '✅ Set' : '❌ Missing');
 console.log('- Anthropic API Key:', process.env.ANTHROPIC_API_KEY ? '✅ Set' : '❌ Missing');
 console.log('- Port:', PORT);
 
@@ -63,10 +61,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 console.log('- OpenAI client initialized');
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-console.log('- Gemini client initialized');
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -137,54 +131,6 @@ async function callOpenAI(imagePath, prompt) {
       success: false,
       error: error.message,
       model: "o4-mini"
-    };
-  }
-}
-
-async function callGemini(imagePath, prompt) {
-  console.log('🟡 Gemini: Starting API call...');
-  console.log('- Model: gemini-2.0-flash');
-  console.log('- Image path:', imagePath);
-  console.log('- Prompt:', prompt || 'Default prompt');
-  
-  try {
-    const imageBuffer = fs.readFileSync(imagePath);
-    const base64Image = imageBuffer.toString('base64');
-    const fileExtension = getFileExtension(imagePath);
-    
-    console.log('- Image converted to base64, length:', base64Image.length);
-    console.log('- File extension:', fileExtension);
-    
-    const imagePart = {
-      inlineData: {
-        data: base64Image,
-        mimeType: `image/${fileExtension}`
-      }
-    };
-
-    const result = await geminiModel.generateContent([
-      prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text.",
-      imagePart
-    ]);
-    
-    const response = await result.response;
-    const responseText = response.text();
-    
-    console.log('🟡 Gemini: Response received');
-    console.log('- Response:', responseText);
-    
-    return {
-      success: true,
-      response: responseText,
-      model: "gemini-2.0-flash"
-    };
-  } catch (error) {
-    console.error('🟡 Gemini: ERROR -', error.message);
-    console.error('- Full error:', error);
-    return {
-      success: false,
-      error: error.message,
-      model: "gemini-2.0-flash"
     };
   }
 }
@@ -272,12 +218,12 @@ function analyzeResponses(responses) {
   
   const successfulResponses = responses.filter(r => r.success);
   
-  if (successfulResponses.length < 2) {
-    console.log('- Not enough successful responses for consensus analysis');
-    return successfulResponses.map(r => ({ ...r, status: 'error' }));
+  if (successfulResponses.length < 1) {
+    console.log('- No successful responses');
+    return responses.map(r => ({ ...r, status: 'error' }));
   }
   
-  // Simple similarity check (you can make this more sophisticated)
+  // Simple similarity check for two models
   const responseTexts = successfulResponses.map(r => r.response.toLowerCase().trim());
   const analyzed = successfulResponses.map((response, index) => {
     const currentText = responseTexts[index];
@@ -294,7 +240,7 @@ function analyzeResponses(responses) {
     return {
       ...response,
       matchCount: matches.length,
-      status: matches.length >= 2 ? 'consensus' : 'different'
+      status: matches.length >= 1 ? 'consensus' : 'different'
     };
   });
   
@@ -325,20 +271,18 @@ app.post('/api/analyze', upload.array('images', 5), async (req, res) => {
       console.log('- MIME type:', file.mimetype);
       
       try {
-        // Call all three LLMs concurrently
+        // Call OpenAI and Claude concurrently
         console.log('🔄 Starting concurrent API calls...');
-        const [openaiResult, geminiResult, claudeResult] = await Promise.all([
+        const [openaiResult, claudeResult] = await Promise.all([
           callOpenAI(imagePath, prompt),
-          callGemini(imagePath, prompt),
           callClaude(imagePath, prompt)
         ]);
 
         console.log('\n📊 All API calls completed');
         console.log('- OpenAI success:', openaiResult.success);
-        console.log('- Gemini success:', geminiResult.success);
         console.log('- Claude success:', claudeResult.success);
 
-        const allResponses = [openaiResult, geminiResult, claudeResult];
+        const allResponses = [openaiResult, claudeResult];
         const analyzedResponses = analyzeResponses(allResponses);
 
         results.push({

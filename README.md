@@ -1,6 +1,6 @@
 # 🤖 Multi-LLM Question Solver
 
-A powerful web application that analyzes images with questions using three AI models simultaneously: **OpenAI GPT-4o-mini**, **Google Gemini 1.5 Flash**, and **Claude 3.5 Sonnet**. Get consensus-based answers with visual indicators showing agreement between models.
+A powerful web application that analyzes images with questions using two AI models simultaneously: **OpenAI GPT-4o-mini** and **Claude 3.5 Sonnet**. Get consensus-based answers with visual indicators showing agreement between models.
 
 ![App Preview](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-blue)
@@ -8,7 +8,7 @@ A powerful web application that analyzes images with questions using three AI mo
 
 ## 🌟 Features
 
-- **Multi-LLM Analysis**: Concurrent processing with 3 top AI models
+- **Multi-LLM Analysis**: Concurrent processing with 2 top AI models
 - **Visual Consensus**: Color-coded results showing agreement/disagreement
 - **Drag & Drop Interface**: Modern, intuitive file upload
 - **Custom Prompts**: Add specific questions or use default analysis
@@ -21,9 +21,9 @@ A powerful web application that analyzes images with questions using three AI mo
 
 1. **Upload Images**: Drag & drop or click to upload images (JPEG, PNG, GIF, WebP)
 2. **Add Prompt** (Optional): Specify custom questions or use default analysis
-3. **Analyze**: Click "Analyze Images" to send to all 3 AI models concurrently
+3. **Analyze**: Click "Analyze Images" to send to both AI models concurrently
 4. **View Results**: See responses with visual indicators:
-   - 🟢 **Green Check**: Consensus (2+ models agree)
+   - 🟢 **Green Check**: Consensus (both models agree)
    - 🔴 **Red X**: Different/Error
    - ⚠️ **Warning**: Processing issues
 
@@ -33,7 +33,6 @@ A powerful web application that analyzes images with questions using three AI mo
 - Node.js 18+ installed
 - API keys for:
   - OpenAI (GPT-4o-mini)
-  - Google AI (Gemini 1.5 Flash)
   - Anthropic (Claude 3.5 Sonnet)
 
 ### Installation
@@ -63,7 +62,6 @@ copy env-template.txt .env
 
 # Edit .env with your API keys
 OPENAI_API_KEY=your_openai_api_key_here
-GOOGLE_API_KEY=your_google_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 PORT=3000
 NODE_ENV=production
@@ -105,7 +103,6 @@ Set these in your Render dashboard:
 
 ```
 OPENAI_API_KEY=your_openai_api_key_here
-GOOGLE_API_KEY=your_google_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 NODE_ENV=production
 ```
@@ -163,7 +160,7 @@ Upload images for multi-LLM analysis.
           "response": "Answer from AI model",
           "model": "GPT-4o-mini",
           "status": "consensus",
-          "matchCount": 2
+          "matchCount": 1
         },
         // ... other models
       ]
@@ -185,7 +182,7 @@ Health check endpoint.
 
 ## ⚡ Performance Optimizations
 
-- **Concurrent API Calls**: All 3 LLMs called simultaneously
+- **Concurrent API Calls**: Both LLMs called simultaneously
 - **File Compression**: Gzip compression enabled
 - **Static File Serving**: Optimized for production
 - **Error Boundaries**: Graceful error handling
@@ -211,8 +208,7 @@ Health check endpoint.
 ## 🤖 AI Models Used
 
 1. **OpenAI GPT-4o-mini**: Fast, cost-effective vision model
-2. **Google Gemini 1.5 Flash**: High-speed multimodal AI
-3. **Claude 3.5 Sonnet**: Advanced reasoning and analysis
+2. **Claude 3.5 Sonnet**: Advanced reasoning and analysis
 
 ## 💡 Use Cases
 
@@ -226,7 +222,7 @@ Health check endpoint.
 
 ### Common Issues
 
-1. **API Key Errors**: Ensure all 3 API keys are correctly set in environment variables
+1. **API Key Errors**: Ensure both API keys are correctly set in environment variables
 2. **File Upload Fails**: Check file size (max 10MB) and format (images only)
 3. **Slow Response**: Large images or complex questions may take longer
 4. **Rate Limiting**: Wait if you've exceeded the request limit
@@ -236,7 +232,7 @@ Set `NODE_ENV=development` for detailed error logs.
 
 ## 📈 Scaling Considerations
 
-- **API Rate Limits**: Monitor usage of all 3 AI services
+- **API Rate Limits**: Monitor usage of both AI services
 - **Cost Management**: Track API costs, especially for high-volume usage
 - **Caching**: Consider implementing response caching for repeated questions
 - **Load Balancing**: Use multiple instances for high traffic

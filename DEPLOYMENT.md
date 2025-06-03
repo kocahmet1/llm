@@ -8,7 +8,6 @@ This guide will help you deploy the Multi-LLM Question Solver on Render.com for 
 2. **Render.com Account**: Sign up at [render.com](https://render.com)
 3. **API Keys**: Obtain API keys from:
    - [OpenAI API](https://platform.openai.com/api-keys)
-   - [Google AI Studio](https://aistudio.google.com/app/apikey)
    - [Anthropic Console](https://console.anthropic.com/account/keys)
 
 ## 🔑 API Key Setup
@@ -17,12 +16,6 @@ This guide will help you deploy the Multi-LLM Question Solver on Render.com for 
 1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)
 2. Click "Create new secret key"
 3. Copy the key (starts with `sk-`)
-
-### Google AI API Key
-1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Click "Create API Key"
-3. Select a Google Cloud project or create new
-4. Copy the generated key
 
 ### Anthropic API Key
 1. Go to [Anthropic Console](https://console.anthropic.com/account/keys)
@@ -63,7 +56,6 @@ In the Render dashboard, add these environment variables:
 | Key | Value | Notes |
 |-----|-------|-------|
 | `OPENAI_API_KEY` | `sk-...` | Your OpenAI API key |
-| `GOOGLE_API_KEY` | `AIza...` | Your Google AI API key |
 | `ANTHROPIC_API_KEY` | `sk-ant-...` | Your Anthropic API key |
 | `NODE_ENV` | `production` | Production environment |
 
@@ -139,7 +131,6 @@ npm run build:client
    // Add to server.js temporarily
    console.log('Environment check:', {
      hasOpenAI: !!process.env.OPENAI_API_KEY,
-     hasGoogle: !!process.env.GOOGLE_API_KEY,
      hasAnthropic: !!process.env.ANTHROPIC_API_KEY
    });
    ```
@@ -186,9 +177,8 @@ The app includes built-in rate limiting:
 
 ### API Costs (Estimated per 1000 requests)
 - **OpenAI GPT-4o-mini**: ~$0.10
-- **Google Gemini Flash**: ~$0.05
 - **Anthropic Claude**: ~$0.15
-- **Total per 1000 requests**: ~$0.30
+- **Total per 1000 requests**: ~$0.25
 
 ### Render Hosting Costs
 - **Free Tier**: $0/month (limited)
@@ -238,7 +228,6 @@ The app includes built-in rate limiting:
 
 ### API Provider Support
 - **OpenAI**: [help.openai.com](https://help.openai.com)
-- **Google**: [cloud.google.com/support](https://cloud.google.com/support)
 - **Anthropic**: [support.anthropic.com](https://support.anthropic.com)
 
 ---

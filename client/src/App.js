@@ -113,7 +113,7 @@ function App() {
     <div className="container">
       <div className="header">
         <h1>🤖 Multi-LLM Question Solver</h1>
-        <p>Upload images with questions and get answers from OpenAI, Gemini, and Claude</p>
+        <p>Upload images with questions and get answers from OpenAI and Claude</p>
       </div>
 
       <div className="upload-section">
