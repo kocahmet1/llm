@@ -97,39 +97,37 @@ async function callOpenAI(imagePath, prompt) {
     const base64Image = imageToBase64(imagePath);
     console.log('- Image converted to base64, length:', base64Image.length);
     
-    const response = await openai.responses.create({
+    const response = await openai.chat.completions.create({
       model: "o4-mini",
-      input: [
+      messages: [
         {
-          type: "text",
-          text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
-        },
-        {
-          type: "image_url",
-          image_url: {
-            url: `data:image/jpeg;base64,${base64Image}`
-          }
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            }
+          ]
         }
       ],
-      text: {
-        format: {
-          type: "text"
-        }
+      response_format: {
+        type: "text"
       },
-      reasoning: {
-        effort: "high",
-        summary: "auto"
-      },
-      tools: [],
-      store: true
+      reasoning_effort: "high"
     });
     
     console.log('🔴 OpenAI: Response received');
-    console.log('- Response:', response.text);
+    console.log('- Response:', response.choices[0].message.content);
     
     return {
       success: true,
-      response: response.text,
+      response: response.choices[0].message.content,
       model: "o4-mini"
     };
   } catch (error) {
