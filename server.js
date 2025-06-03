@@ -65,7 +65,7 @@ const openai = new OpenAI({
 console.log('- OpenAI client initialized');
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 console.log('- Gemini client initialized');
 
 const anthropic = new Anthropic({
@@ -140,7 +140,7 @@ async function callOpenAI(imagePath, prompt) {
 
 async function callGemini(imagePath, prompt) {
   console.log('🟡 Gemini: Starting API call...');
-  console.log('- Model: gemini-2.0-flash');
+  console.log('- Model: gemini-2.5-flash-preview-05-20');
   console.log('- Image path:', imagePath);
   console.log('- Prompt:', prompt || 'Default prompt');
   
@@ -173,7 +173,7 @@ async function callGemini(imagePath, prompt) {
     return {
       success: true,
       response: responseText,
-      model: "gemini-2.0-flash"
+      model: "gemini-2.5-flash-preview-05-20"
     };
   } catch (error) {
     console.error('🟡 Gemini: ERROR -', error.message);
@@ -181,7 +181,7 @@ async function callGemini(imagePath, prompt) {
     return {
       success: false,
       error: error.message,
-      model: "gemini-2.0-flash"
+      model: "gemini-2.5-flash-preview-05-20"
     };
   }
 }
