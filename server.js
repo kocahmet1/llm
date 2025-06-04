@@ -77,8 +77,30 @@ function imageToBase64(filePath) {
 // Helper function to get file extension
 function getFileExtension(filename) {
   const ext = path.extname(filename).toLowerCase().slice(1);
-  // If no extension found, default to 'jpeg' for images
-  return ext || 'jpeg';
+  console.log(`- Extracting extension from "${filename}": "${ext}"`);
+  
+  // Map common extensions to proper media types
+  const extensionMap = {
+    'jpg': 'jpeg',
+    'jpeg': 'jpeg',
+    'png': 'png',
+    'gif': 'gif',
+    'webp': 'webp'
+  };
+  
+  const mappedExt = extensionMap[ext] || ext;
+  console.log(`- Mapped extension "${ext}" to "${mappedExt}"`);
+  
+  // If no extension found or unrecognized, default to 'jpeg' for images
+  return mappedExt || 'jpeg';
+}
+
+// Helper function to get media type from file path or buffer
+function getMediaType(filePath) {
+  const ext = getFileExtension(filePath);
+  const mediaType = `image/${ext}`;
+  console.log(`- Determined media type for "${filePath}": "${mediaType}"`);
+  return mediaType;
 }
 
 // LLM API call functions
@@ -90,6 +112,7 @@ async function callOpenAI(imagePath, prompt) {
   
   try {
     const base64Image = imageToBase64(imagePath);
+    const mediaType = getMediaType(imagePath);
     console.log('- Image converted to base64, length:', base64Image.length);
     
     const response = await openai.chat.completions.create({
@@ -105,7 +128,7 @@ async function callOpenAI(imagePath, prompt) {
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
+                url: `data:${mediaType};base64,${base64Image}`
               }
             }
           ]
@@ -165,10 +188,11 @@ Do not provide explanations, reasoning, or additional text beyond the answers.`
     // Add all images to the content array
     imagePaths.forEach((imagePath, index) => {
       const base64Image = imageToBase64(imagePath);
+      const mediaType = getMediaType(imagePath);
       content.push({
         type: "image_url",
         image_url: {
-          url: `data:image/jpeg;base64,${base64Image}`
+          url: `data:${mediaType};base64,${base64Image}`
         }
       });
     });
@@ -217,10 +241,9 @@ async function callClaude(imagePath, prompt) {
   try {
     const imageBuffer = fs.readFileSync(imagePath);
     const base64Image = imageBuffer.toString('base64');
-    const fileExtension = getFileExtension(imagePath);
     
     console.log('- Image converted to base64, length:', base64Image.length);
-    console.log('- File extension:', fileExtension);
+    console.log('- Media type will be determined from path');
     
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -237,7 +260,7 @@ async function callClaude(imagePath, prompt) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: `image/${fileExtension}`,
+                media_type: getMediaType(imagePath),
                 data: base64Image
               }
             },
@@ -297,13 +320,12 @@ async function callClaudeBatch(imagePaths, filenames, prompt) {
     imagePaths.forEach((imagePath, index) => {
       const imageBuffer = fs.readFileSync(imagePath);
       const base64Image = imageBuffer.toString('base64');
-      const fileExtension = getFileExtension(imagePath);
       
       content.push({
         type: "image",
         source: {
           type: "base64",
-          media_type: `image/${fileExtension}`,
+          media_type: getMediaType(imagePath),
           data: base64Image
         }
       });
@@ -387,6 +409,7 @@ async function callOpenAIO3(imagePath, prompt) {
   
   try {
     const base64Image = imageToBase64(imagePath);
+    const mediaType = getMediaType(imagePath);
     console.log('- Image converted to base64, length:', base64Image.length);
     
     const response = await openai.chat.completions.create({
@@ -402,7 +425,7 @@ async function callOpenAIO3(imagePath, prompt) {
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
+                url: `data:${mediaType};base64,${base64Image}`
               }
             }
           ]
@@ -444,10 +467,9 @@ async function callClaudeOpus(imagePath, prompt) {
   try {
     const imageBuffer = fs.readFileSync(imagePath);
     const base64Image = imageBuffer.toString('base64');
-    const fileExtension = getFileExtension(imagePath);
     
     console.log('- Image converted to base64, length:', base64Image.length);
-    console.log('- File extension:', fileExtension);
+    console.log('- Media type will be determined from path');
     
     const stream = await anthropic.messages.create({
       model: "claude-opus-4-20250514",
@@ -465,7 +487,7 @@ async function callClaudeOpus(imagePath, prompt) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: `image/${fileExtension}`,
+                media_type: getMediaType(imagePath),
                 data: base64Image
               }
             },
