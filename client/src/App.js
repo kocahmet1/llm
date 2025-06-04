@@ -14,6 +14,7 @@ function App() {
   const [batchInfo, setBatchInfo] = useState(null);
   const [strongEvaluations, setStrongEvaluations] = useState({});
   const [strongEvaluationLoading, setStrongEvaluationLoading] = useState({});
+  const [originalFiles, setOriginalFiles] = useState({});
 
   const onDrop = useCallback((acceptedFiles) => {
     setFiles(prev => [...prev, ...acceptedFiles]);
@@ -53,6 +54,13 @@ function App() {
     setBatchInfo(null);
     setStrongEvaluations({});
     setStrongEvaluationLoading({});
+
+    // Store original files mapping
+    const fileMapping = {};
+    files.forEach(file => {
+      fileMapping[file.name] = file;
+    });
+    setOriginalFiles(fileMapping);
 
     try {
       const formData = new FormData();
@@ -103,8 +111,24 @@ function App() {
     }
   };
 
-  const handleStrongEvaluation = async (filename, originalFile) => {
+  const handleStrongEvaluation = async (filename) => {
     console.log('Starting strong evaluation for:', filename);
+    
+    // Get the original file
+    const originalFile = originalFiles[filename];
+    if (!originalFile) {
+      console.error('Original file not found for:', filename);
+      console.log('Available files:', Object.keys(originalFiles));
+      setError(`Original file not found for ${filename}. Please try uploading again.`);
+      return;
+    }
+    
+    console.log('Found original file:', {
+      name: originalFile.name,
+      size: originalFile.size,
+      type: originalFile.type,
+      lastModified: originalFile.lastModified
+    });
     
     // Set loading state for this specific image
     setStrongEvaluationLoading(prev => ({
@@ -118,6 +142,14 @@ function App() {
       
       if (prompt.trim()) {
         formData.append('prompt', prompt);
+      }
+
+      console.log('Sending strong evaluation request for:', filename);
+      console.log('File size:', originalFile.size);
+      console.log('File type:', originalFile.type);
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, typeof value === 'object' ? `File(${value.name}, ${value.size} bytes)` : value);
       }
 
       const response = await axios.post('/api/evaluate-strongly', formData, {
@@ -136,6 +168,9 @@ function App() {
       console.log('Strong evaluation completed for:', filename);
     } catch (err) {
       console.error('Strong evaluation error:', err);
+      console.error('Error details:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      console.error('Error config:', err.config);
       setError(`Failed to perform strong evaluation for ${filename}: ${err.response?.data?.error || err.message}`);
     } finally {
       // Clear loading state
@@ -149,11 +184,6 @@ function App() {
   // Helper function to check if any responses have "different" status
   const hasDisagreement = (responses) => {
     return responses && responses.some(response => response.status === 'different');
-  };
-
-  // Helper function to get the original file for a filename
-  const getOriginalFile = (filename) => {
-    return files.find(file => file.name === filename);
   };
 
   const getStatusIcon = (response) => {
@@ -351,7 +381,7 @@ function App() {
                 {hasDisagreement(result.responses) && !strongEvaluations[result.filename] && (
                   <button
                     className="evaluate-strongly-btn"
-                    onClick={() => handleStrongEvaluation(result.filename, getOriginalFile(result.filename))}
+                    onClick={() => handleStrongEvaluation(result.filename)}
                     disabled={strongEvaluationLoading[result.filename]}
                   >
                     {strongEvaluationLoading[result.filename] ? (

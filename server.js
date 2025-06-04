@@ -817,16 +817,35 @@ app.post('/api/analyze-batch', upload.array('images', 5), async (req, res) => {
 });
 
 // NEW: Strong evaluation endpoint for disagreements
-app.post('/api/evaluate-strongly', upload.single('image'), async (req, res) => {
+app.post('/api/evaluate-strongly', (req, res, next) => {
+  upload.single('image')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      console.error('💥 Multer error:', err);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File too large for strong evaluation' });
+      }
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    } else if (err) {
+      console.error('💥 Upload error:', err);
+      return res.status(400).json({ error: `File upload failed: ${err.message}` });
+    }
+    next();
+  });
+}, async (req, res) => {
   console.log('\n🚀🔥 === STRONG EVALUATION REQUEST ===');
   console.log('- Timestamp:', new Date().toISOString());
   console.log('- File received:', req.file?.originalname || 'None');
+  console.log('- File size:', req.file?.size || 'None');
+  console.log('- File mimetype:', req.file?.mimetype || 'None');
+  console.log('- File path:', req.file?.path || 'None');
   console.log('- Prompt:', req.body.prompt || 'None');
+  console.log('- Request body keys:', Object.keys(req.body));
+  console.log('- Request files:', req.file ? 'Present' : 'Missing');
   
   try {
     if (!req.file) {
-      console.log('❌ No file uploaded');
-      return res.status(400).json({ error: 'No image uploaded' });
+      console.log('❌ No file uploaded - this is the 400 error source');
+      return res.status(400).json({ error: 'No image uploaded for strong evaluation' });
     }
 
     const { prompt } = req.body;
