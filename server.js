@@ -452,6 +452,10 @@ async function callClaudeOpus(imagePath, prompt) {
     const stream = await anthropic.messages.create({
       model: "claude-opus-4-20250514",
       max_tokens: 16000,
+      thinking: {
+        type: "enabled",
+        budget_tokens: 15000
+      },
       stream: true, // Enable streaming as required by Claude Opus 4
       messages: [
         {
@@ -476,21 +480,30 @@ async function callClaudeOpus(imagePath, prompt) {
     
     console.log('🟣🚀 Claude Opus: Stream started, collecting response...');
     
-    // Collect the streaming response
+    // Collect the streaming response (both thinking and text)
     let responseText = '';
+    let thinkingSummary = '';
     
     for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
-        responseText += chunk.delta.text;
+      if (chunk.type === 'content_block_delta') {
+        if (chunk.delta?.text) {
+          responseText += chunk.delta.text;
+        } else if (chunk.delta?.thinking) {
+          thinkingSummary += chunk.delta.thinking;
+        }
       }
     }
     
     console.log('🟣🚀 Claude Opus: Response received');
+    if (thinkingSummary) {
+      console.log('- Thinking summary:', thinkingSummary.substring(0, 100) + '...');
+    }
     console.log('- Response:', responseText);
     
     return {
       success: true,
       response: responseText.trim(),
+      thinking: thinkingSummary,
       model: "claude-opus-4-20250514",
       tier: "powerful"
     };
