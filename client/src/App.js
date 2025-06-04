@@ -114,12 +114,62 @@ function App() {
   const handleStrongEvaluation = async (filename) => {
     console.log('Starting strong evaluation for:', filename);
     
-    // Get the original file
-    const originalFile = originalFiles[filename];
+    // More robust file finding - try multiple matching strategies
+    let originalFile = originalFiles[filename];
+    
+    if (!originalFile) {
+      console.log('Direct match failed, trying alternative matching strategies...');
+      
+      // Strategy 1: Try to find by normalized filename (handle encoding issues)
+      const normalizeFilename = (name) => {
+        return name
+          .replace(/Ã¤/g, 'ä')
+          .replace(/Ã¶/g, 'ö')  
+          .replace(/Ã¼/g, 'ü')
+          .replace(/Ã/g, 'Ä')
+          .replace(/Ã/g, 'Ö')
+          .replace(/Ã/g, 'Ü')
+          .replace(/Ã§/g, 'ç')
+          .replace(/Ã±/g, 'ñ')
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Remove diacritics as fallback
+      };
+      
+      const normalizedRequestedName = normalizeFilename(filename);
+      console.log('Normalized requested name:', normalizedRequestedName);
+      
+      // Try to find a file with matching normalized name
+      for (const [storedName, file] of Object.entries(originalFiles)) {
+        const normalizedStoredName = normalizeFilename(storedName);
+        console.log('Comparing with stored name:', storedName, '-> normalized:', normalizedStoredName);
+        
+        if (normalizedStoredName === normalizedRequestedName) {
+          originalFile = file;
+          console.log('Found match using normalized names!');
+          break;
+        }
+      }
+    }
+    
+    if (!originalFile) {
+      // Strategy 2: Try partial matching (remove special characters and compare)
+      const simplifyName = (name) => name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+      const simplifiedRequested = simplifyName(filename);
+      
+      for (const [storedName, file] of Object.entries(originalFiles)) {
+        const simplifiedStored = simplifyName(storedName);
+        if (simplifiedStored === simplifiedRequested) {
+          originalFile = file;
+          console.log('Found match using simplified names!');
+          break;
+        }
+      }
+    }
+    
     if (!originalFile) {
       console.error('Original file not found for:', filename);
       console.log('Available files:', Object.keys(originalFiles));
-      setError(`Original file not found for ${filename}. Please try uploading again.`);
+      console.log('Requested filename (char codes):', Array.from(filename).map(c => `${c}(${c.charCodeAt(0)})`).join(' '));
+      setError(`Original file not found for ${filename}. This might be a character encoding issue. Please try uploading again.`);
       return;
     }
     
