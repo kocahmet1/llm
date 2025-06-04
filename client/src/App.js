@@ -230,7 +230,7 @@ function App() {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 180000, // 3 minutes timeout for powerful models
+        timeout: 15 * 60 * 1000, // 15 minutes timeout for powerful models
       });
 
       // Store the strong evaluation result
@@ -245,7 +245,18 @@ function App() {
       console.error('Error details:', err.response?.data);
       console.error('Error status:', err.response?.status);
       console.error('Error config:', err.config);
-      setError(`Failed to perform strong evaluation for ${filename}: ${err.response?.data?.error || err.message}`);
+      
+      let errorMessage = `Failed to perform strong evaluation for ${filename}`;
+      
+      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        errorMessage += ': Network error - this might be due to timeout. Strong evaluation can take up to 15 minutes.';
+      } else if (err.response?.data?.error) {
+        errorMessage += `: ${err.response.data.error}`;
+      } else if (err.message) {
+        errorMessage += `: ${err.message}`;
+      }
+      
+      setError(errorMessage);
     } finally {
       // Clear loading state
       setStrongEvaluationLoading(prev => ({
@@ -464,7 +475,7 @@ function App() {
                     {strongEvaluationLoading[result.filename] ? (
                       <div className="loading-small">
                         <div className="spinner-small"></div>
-                        Evaluating...
+                        Strong Analysis... (up to 15 min)
                       </div>
                     ) : (
                       '🚀 Evaluate Strongly'

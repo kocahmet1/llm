@@ -411,7 +411,8 @@ async function callOpenAIO3(imagePath, prompt) {
       response_format: {
         type: "text"
       },
-      reasoning_effort: "high"
+      reasoning_effort: "high",
+      timeout: 15 * 60 * 1000  // 15 minutes timeout
     });
     
     console.log('🔴🚀 OpenAI O3: Response received');
@@ -454,7 +455,7 @@ async function callClaudeOpus(imagePath, prompt) {
       max_tokens: 16000,
       thinking: {
         type: "enabled",
-        budget_tokens: 15000
+        budget_tokens: 8000  // Reduced from 15000 to 8000 for faster processing
       },
       messages: [
         {
@@ -475,6 +476,8 @@ async function callClaudeOpus(imagePath, prompt) {
           ]
         }
       ]
+    }, {
+      timeout: 15 * 60 * 1000  // 15 minutes timeout
     });
     
     console.log('🟣🚀 Claude Opus: Response received');
