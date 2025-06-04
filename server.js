@@ -92,6 +92,20 @@ async function callOpenAI(imagePath, prompt) {
     const base64Image = imageToBase64(imagePath);
     console.log('- Image converted to base64, length:', base64Image.length);
     
+    const defaultPrompt = `Analyze this image and:
+1. First, identify the question number (usually shown as a large white number on a black background at the top)
+2. Then answer the question
+
+Please format your response EXACTLY as:
+QUESTION_NUMBER: [number you found]
+ANSWER: [your answer]
+
+For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D) for the ANSWER. 
+For math questions, respond with ONLY the correct numerical answer for the ANSWER. 
+Do not provide explanations, reasoning, or additional text beyond the answer.
+
+If you cannot find a clear question number, use "UNKNOWN" for QUESTION_NUMBER.`;
+    
     const response = await openai.chat.completions.create({
       model: "o4-mini",
       messages: [
@@ -100,7 +114,7 @@ async function callOpenAI(imagePath, prompt) {
           content: [
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
+              text: prompt || defaultPrompt
             },
             {
               type: "image_url",
@@ -120,9 +134,18 @@ async function callOpenAI(imagePath, prompt) {
     console.log('🔴 OpenAI: Response received');
     console.log('- Response:', response.choices[0].message.content);
     
+    // Parse the response to extract question number and answer
+    const responseText = response.choices[0].message.content;
+    const questionMatch = responseText.match(/QUESTION_NUMBER:\s*(.+)/i);
+    const answerMatch = responseText.match(/ANSWER:\s*(.+)/i);
+    
+    const questionNumber = questionMatch ? questionMatch[1].trim() : 'UNKNOWN';
+    const answer = answerMatch ? answerMatch[1].trim() : responseText;
+    
     return {
       success: true,
-      response: response.choices[0].message.content,
+      response: answer,
+      questionNumber: questionNumber,
       model: "o4-mini"
     };
   } catch (error) {
@@ -131,6 +154,7 @@ async function callOpenAI(imagePath, prompt) {
     return {
       success: false,
       error: error.message,
+      questionNumber: 'UNKNOWN',
       model: "o4-mini"
     };
   }
@@ -149,16 +173,21 @@ async function callOpenAIBatch(imagePaths, filenames, prompt) {
         type: "text",
         text: prompt || `I'm sending you ${imagePaths.length} images with questions. Please analyze each image and provide answers. 
 
-IMPORTANT: Format your response as follows:
-Image ${filenames[0]}: [answer]
-Image ${filenames[1]}: [answer]
-${filenames.length > 2 ? `Image ${filenames[2]}: [answer]` : ''}
-${filenames.length > 3 ? `Image ${filenames[3]}: [answer]` : ''}
-${filenames.length > 4 ? `Image ${filenames[4]}: [answer]` : ''}
+IMPORTANT: For each image, first identify the question number (usually shown as a large white number on a black background at the top), then provide your answer.
 
-For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). 
-For math questions, respond with ONLY the correct numerical answer. 
-Do not provide explanations, reasoning, or additional text beyond the answers.`
+Format your response EXACTLY as follows:
+Image ${filenames[0]}: QUESTION_NUMBER: [number] ANSWER: [answer]
+Image ${filenames[1]}: QUESTION_NUMBER: [number] ANSWER: [answer]
+${filenames.length > 2 ? `Image ${filenames[2]}: QUESTION_NUMBER: [number] ANSWER: [answer]` : ''}
+${filenames.length > 3 ? `Image ${filenames[3]}: QUESTION_NUMBER: [number] ANSWER: [answer]` : ''}
+${filenames.length > 4 ? `Image ${filenames[4]}: QUESTION_NUMBER: [number] ANSWER: [answer]` : ''}
+
+For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D) for the ANSWER. 
+For math questions, respond with ONLY the correct numerical answer for the ANSWER. 
+Do not provide explanations, reasoning, or additional text beyond the answers.
+If you cannot find a clear question number, use "UNKNOWN" for QUESTION_NUMBER.
+
+The filenames are: ${filenames.join(', ')}`
       }
     ];
 
@@ -222,6 +251,20 @@ async function callClaude(imagePath, prompt) {
     console.log('- Image converted to base64, length:', base64Image.length);
     console.log('- File extension:', fileExtension);
     
+    const defaultPrompt = `Analyze this image and:
+1. First, identify the question number (usually shown as a large white number on a black background at the top)
+2. Then answer the question
+
+Please format your response EXACTLY as:
+QUESTION_NUMBER: [number you found]
+ANSWER: [your answer]
+
+For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D) for the ANSWER. 
+For math questions, respond with ONLY the correct numerical answer for the ANSWER. 
+Do not provide explanations, reasoning, or additional text beyond the answer.
+
+If you cannot find a clear question number, use "UNKNOWN" for QUESTION_NUMBER.`;
+    
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 16000,
@@ -243,7 +286,7 @@ async function callClaude(imagePath, prompt) {
             },
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
+              text: prompt || defaultPrompt
             }
           ]
         }
@@ -266,9 +309,17 @@ async function callClaude(imagePath, prompt) {
       }
     }
     
+    // Parse the response to extract question number and answer
+    const questionMatch = responseText.match(/QUESTION_NUMBER:\s*(.+)/i);
+    const answerMatch = responseText.match(/ANSWER:\s*(.+)/i);
+    
+    const questionNumber = questionMatch ? questionMatch[1].trim() : 'UNKNOWN';
+    const answer = answerMatch ? answerMatch[1].trim() : responseText;
+    
     return {
       success: true,
-      response: responseText,
+      response: answer,
+      questionNumber: questionNumber,
       thinking: thinkingSummary,
       model: "claude-sonnet-4-20250514"
     };
@@ -278,6 +329,7 @@ async function callClaude(imagePath, prompt) {
     return {
       success: false,
       error: error.message,
+      questionNumber: 'UNKNOWN',
       model: "claude-sonnet-4-20250514"
     };
   }
@@ -314,16 +366,19 @@ async function callClaudeBatch(imagePaths, filenames, prompt) {
       type: "text",
       text: prompt || `I'm sending you ${imagePaths.length} images with questions. Please analyze each image and provide answers. 
 
-IMPORTANT: Format your response as follows:
-Image ${filenames[0]}: [answer]
-Image ${filenames[1]}: [answer]
-${filenames.length > 2 ? `Image ${filenames[2]}: [answer]` : ''}
-${filenames.length > 3 ? `Image ${filenames[3]}: [answer]` : ''}
-${filenames.length > 4 ? `Image ${filenames[4]}: [answer]` : ''}
+IMPORTANT: For each image, first identify the question number (usually shown as a large white number on a black background at the top), then provide your answer.
 
-For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). 
-For math questions, respond with ONLY the correct numerical answer. 
+Format your response EXACTLY as follows:
+Image ${filenames[0]}: QUESTION_NUMBER: [number] ANSWER: [answer]
+Image ${filenames[1]}: QUESTION_NUMBER: [number] ANSWER: [answer]
+${filenames.length > 2 ? `Image ${filenames[2]}: QUESTION_NUMBER: [number] ANSWER: [answer]` : ''}
+${filenames.length > 3 ? `Image ${filenames[3]}: QUESTION_NUMBER: [number] ANSWER: [answer]` : ''}
+${filenames.length > 4 ? `Image ${filenames[4]}: QUESTION_NUMBER: [number] ANSWER: [answer]` : ''}
+
+For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D) for the ANSWER. 
+For math questions, respond with ONLY the correct numerical answer for the ANSWER. 
 Do not provide explanations, reasoning, or additional text beyond the answers.
+If you cannot find a clear question number, use "UNKNOWN" for QUESTION_NUMBER.
 
 The filenames are: ${filenames.join(', ')}`
     });
@@ -537,25 +592,36 @@ function parseBatchResponse(batchResponse, filenames) {
   // Enhanced parsing logic
   filenames.forEach((filename, index) => {
     let extractedResponse = '';
+    let questionNumber = 'UNKNOWN';
     
     // Try multiple patterns to extract individual responses
     const patterns = [
-      // Pattern 1: "Image filename: answer"
+      // Pattern 1: "Image filename: QUESTION_NUMBER: [number] ANSWER: [answer]"
       new RegExp(`Image\\s+${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:([^]*?)(?=Image\\s+\\w|$)`, 'i'),
-      // Pattern 2: "filename: answer"
+      // Pattern 2: "filename: QUESTION_NUMBER: [number] ANSWER: [answer]"
       new RegExp(`${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:([^]*?)(?=\\w+\\.\\w+\\s*:|$)`, 'i'),
-      // Pattern 3: Line-by-line parsing for numbered responses
-      new RegExp(`(?:^|\\n)\\s*${index + 1}[.)\\s]+([A-Z])(?=\\s|$)`, 'im'),
-      // Pattern 4: Just extract single letter answers in sequence
-      new RegExp(`(?:^|\\n|\\s)([A-Z])(?=\\s|$|\\n)`, 'g')
     ];
     
     // Try pattern-based extraction first
-    for (let i = 0; i < patterns.length - 1; i++) {
+    for (let i = 0; i < patterns.length; i++) {
       const match = responseText.match(patterns[i]);
       if (match && match[1]) {
-        extractedResponse = match[1].trim();
-        console.log(`Pattern ${i + 1} matched for ${filename}: "${extractedResponse}"`);
+        const fullResponse = match[1].trim();
+        console.log(`Pattern ${i + 1} matched for ${filename}: "${fullResponse}"`);
+        
+        // Extract question number and answer from the matched response
+        const questionMatch = fullResponse.match(/QUESTION_NUMBER:\s*(.+?)(?=ANSWER:|$)/i);
+        const answerMatch = fullResponse.match(/ANSWER:\s*(.+)/i);
+        
+        if (questionMatch) {
+          questionNumber = questionMatch[1].trim();
+        }
+        if (answerMatch) {
+          extractedResponse = answerMatch[1].trim();
+        } else {
+          // If no ANSWER tag found, use the whole response
+          extractedResponse = fullResponse;
+        }
         break;
       }
     }
@@ -591,6 +657,7 @@ function parseBatchResponse(batchResponse, filenames) {
       responses: [{
         ...batchResponse,
         response: extractedResponse,
+        questionNumber: questionNumber,
         filename
       }]
     });
@@ -709,8 +776,18 @@ app.post('/api/analyze', upload.array('images', 8), async (req, res) => {
         const allResponses = [openaiResult, claudeResult];
         const analyzedResponses = analyzeResponses(allResponses);
 
+        // Extract question number from responses (prefer one that's not 'UNKNOWN')
+        let questionNumber = 'UNKNOWN';
+        for (const response of allResponses) {
+          if (response.questionNumber && response.questionNumber !== 'UNKNOWN') {
+            questionNumber = response.questionNumber;
+            break;
+          }
+        }
+
         results.push({
           filename: file.originalname,
+          questionNumber: questionNumber,
           responses: analyzedResponses
         });
 
@@ -792,8 +869,18 @@ app.post('/api/analyze-batch', upload.array('images', 8), async (req, res) => {
         const allResponses = [openaiResponse, claudeResponse];
         const analyzedResponses = analyzeResponses(allResponses);
         
+        // Extract question number from responses (prefer one that's not 'UNKNOWN')
+        let questionNumber = 'UNKNOWN';
+        for (const response of allResponses) {
+          if (response.questionNumber && response.questionNumber !== 'UNKNOWN') {
+            questionNumber = response.questionNumber;
+            break;
+          }
+        }
+
         results.push({
           filename,
+          questionNumber: questionNumber,
           responses: analyzedResponses
         });
       });

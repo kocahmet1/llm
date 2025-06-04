@@ -454,7 +454,12 @@ function App() {
           {results.map((result, index) => (
             <div key={index} className="result-card">
               <div className="result-header">
-                <h3>{result.filename}</h3>
+                <h3>
+                  {result.questionNumber && result.questionNumber !== 'UNKNOWN' 
+                    ? `Question ${result.questionNumber}` 
+                    : result.filename
+                  }
+                </h3>
                 {hasDisagreement(result.responses) && !strongEvaluations[result.filename] && (
                   <button
                     className="evaluate-strongly-btn"
