@@ -411,8 +411,7 @@ async function callOpenAIO3(imagePath, prompt) {
       response_format: {
         type: "text"
       },
-      reasoning_effort: "high",
-      timeout: 15 * 60 * 1000  // 15 minutes timeout
+      reasoning_effort: "high"
     });
     
     console.log('🔴🚀 OpenAI O3: Response received');
@@ -453,10 +452,6 @@ async function callClaudeOpus(imagePath, prompt) {
     const response = await anthropic.messages.create({
       model: "claude-opus-4-20250514",
       max_tokens: 16000,
-      thinking: {
-        type: "enabled",
-        budget_tokens: 8000  // Reduced from 15000 to 8000 for faster processing
-      },
       messages: [
         {
           role: "user",
@@ -476,21 +471,15 @@ async function callClaudeOpus(imagePath, prompt) {
           ]
         }
       ]
-    }, {
-      timeout: 15 * 60 * 1000  // 15 minutes timeout
     });
     
     console.log('🟣🚀 Claude Opus: Response received');
     
-    // Handle both thinking and text blocks
+    // Handle text blocks (no thinking blocks anymore)
     let responseText = '';
-    let thinkingSummary = '';
     
     for (const block of response.content) {
-      if (block.type === "thinking") {
-        thinkingSummary = block.thinking;
-        console.log('- Thinking summary:', thinkingSummary.substring(0, 100) + '...');
-      } else if (block.type === "text") {
+      if (block.type === "text") {
         responseText = block.text;
         console.log('- Response:', responseText);
       }
@@ -499,7 +488,6 @@ async function callClaudeOpus(imagePath, prompt) {
     return {
       success: true,
       response: responseText,
-      thinking: thinkingSummary,
       model: "claude-opus-4-20250514",
       tier: "powerful"
     };
