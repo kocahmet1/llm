@@ -39,7 +39,8 @@ app.use('/api/', limiter);
 const upload = multer({
   dest: 'uploads/',
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 8 // Maximum 8 files per request
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
@@ -659,7 +660,7 @@ function analyzeResponses(responses) {
 }
 
 // API Routes
-app.post('/api/analyze', upload.array('images', 5), async (req, res) => {
+app.post('/api/analyze', upload.array('images', 8), async (req, res) => {
   console.log('\n🚀 === NEW ANALYSIS REQUEST ===');
   console.log('- Timestamp:', new Date().toISOString());
   console.log('- Files received:', req.files?.length || 0);
@@ -669,6 +670,11 @@ app.post('/api/analyze', upload.array('images', 5), async (req, res) => {
     if (!req.files || req.files.length === 0) {
       console.log('❌ No files uploaded');
       return res.status(400).json({ error: 'No images uploaded' });
+    }
+
+    if (req.files.length > 8) {
+      console.log('❌ Too many files uploaded:', req.files.length);
+      return res.status(400).json({ error: 'Maximum 8 images allowed per request' });
     }
 
     const { prompt } = req.body;
@@ -728,7 +734,7 @@ app.post('/api/analyze', upload.array('images', 5), async (req, res) => {
 });
 
 // NEW: Batch processing endpoint for multiple images in single API calls
-app.post('/api/analyze-batch', upload.array('images', 5), async (req, res) => {
+app.post('/api/analyze-batch', upload.array('images', 8), async (req, res) => {
   console.log('\n🚀 === NEW BATCH ANALYSIS REQUEST ===');
   console.log('- Timestamp:', new Date().toISOString());
   console.log('- Files received:', req.files?.length || 0);
@@ -738,6 +744,11 @@ app.post('/api/analyze-batch', upload.array('images', 5), async (req, res) => {
     if (!req.files || req.files.length === 0) {
       console.log('❌ No files uploaded');
       return res.status(400).json({ error: 'No images uploaded' });
+    }
+
+    if (req.files.length > 8) {
+      console.log('❌ Too many files uploaded:', req.files.length);
+      return res.status(400).json({ error: 'Maximum 8 images allowed per request. Please upload fewer images or split into multiple batches.' });
     }
 
     const { prompt } = req.body;

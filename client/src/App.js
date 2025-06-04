@@ -17,9 +17,16 @@ function App() {
   const [originalFiles, setOriginalFiles] = useState({});
 
   const onDrop = useCallback((acceptedFiles) => {
-    setFiles(prev => [...prev, ...acceptedFiles]);
+    const newFiles = [...files, ...acceptedFiles];
+    
+    if (newFiles.length > 8) {
+      setError(`Maximum 8 images allowed. You selected ${newFiles.length} images. Please remove ${newFiles.length - 8} images.`);
+      return;
+    }
+    
+    setFiles(newFiles);
     setError('');
-  }, []);
+  }, [files]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -48,6 +55,11 @@ function App() {
       return;
     }
 
+    if (files.length > 8) {
+      setError('Maximum 8 images allowed per analysis. Please remove some images.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setResults([]);
@@ -72,15 +84,20 @@ function App() {
         formData.append('prompt', prompt);
       }
 
+      // Choose endpoint based on batch mode and number of files
       const endpoint = (batchMode && files.length > 1) ? '/api/analyze-batch' : '/api/analyze';
       
       console.log(`Using ${endpoint} for ${files.length} files (batch mode: ${batchMode})`);
+
+      // Increase timeout based on number of files (more files = more time needed)
+      const timeoutMs = files.length > 5 ? 300000 : 180000; // 5 minutes for >5 files, 3 minutes otherwise
+      console.log(`Using timeout: ${timeoutMs}ms for ${files.length} files`);
 
       const response = await axios.post(endpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 120000, // 2 minutes timeout
+        timeout: timeoutMs,
       });
 
       setResults(response.data.results);
@@ -101,11 +118,18 @@ function App() {
       }
     } catch (err) {
       console.error('Analysis error:', err);
-      setError(
-        err.response?.data?.error || 
-        err.message || 
-        'Failed to analyze images. Please try again.'
-      );
+      
+      let errorMessage = 'Failed to analyze images. Please try again.';
+      
+      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        errorMessage = `Network error - this might be due to too many images (${files.length}) causing timeout. Try with fewer images (max 8) or check your connection.`;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -293,7 +317,10 @@ function App() {
             }
           </div>
           <div className="dropzone-subtext">
-            Supports JPEG, PNG, GIF, WebP up to 10MB each
+            Supports JPEG, PNG, GIF, WebP up to 10MB each (Max 8 images)
+            {files.length > 0 && (
+              <span className="file-counter"> • {files.length}/8 files selected</span>
+            )}
           </div>
         </div>
 
