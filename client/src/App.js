@@ -12,6 +12,8 @@ function App() {
   const [error, setError] = useState('');
   const [batchMode, setBatchMode] = useState(true);
   const [batchInfo, setBatchInfo] = useState(null);
+  const [strongEvaluations, setStrongEvaluations] = useState({});
+  const [strongEvaluationLoading, setStrongEvaluationLoading] = useState({});
 
   const onDrop = useCallback((acceptedFiles) => {
     setFiles(prev => [...prev, ...acceptedFiles]);
@@ -49,6 +51,8 @@ function App() {
     setError('');
     setResults([]);
     setBatchInfo(null);
+    setStrongEvaluations({});
+    setStrongEvaluationLoading({});
 
     try {
       const formData = new FormData();
@@ -97,6 +101,59 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStrongEvaluation = async (filename, originalFile) => {
+    console.log('Starting strong evaluation for:', filename);
+    
+    // Set loading state for this specific image
+    setStrongEvaluationLoading(prev => ({
+      ...prev,
+      [filename]: true
+    }));
+
+    try {
+      const formData = new FormData();
+      formData.append('image', originalFile);
+      
+      if (prompt.trim()) {
+        formData.append('prompt', prompt);
+      }
+
+      const response = await axios.post('/api/evaluate-strongly', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 180000, // 3 minutes timeout for powerful models
+      });
+
+      // Store the strong evaluation result
+      setStrongEvaluations(prev => ({
+        ...prev,
+        [filename]: response.data
+      }));
+
+      console.log('Strong evaluation completed for:', filename);
+    } catch (err) {
+      console.error('Strong evaluation error:', err);
+      setError(`Failed to perform strong evaluation for ${filename}: ${err.response?.data?.error || err.message}`);
+    } finally {
+      // Clear loading state
+      setStrongEvaluationLoading(prev => ({
+        ...prev,
+        [filename]: false
+      }));
+    }
+  };
+
+  // Helper function to check if any responses have "different" status
+  const hasDisagreement = (responses) => {
+    return responses && responses.some(response => response.status === 'different');
+  };
+
+  // Helper function to get the original file for a filename
+  const getOriginalFile = (filename) => {
+    return files.find(file => file.name === filename);
   };
 
   const getStatusIcon = (response) => {
@@ -291,6 +348,22 @@ function App() {
             <div key={index} className="result-card">
               <div className="result-header">
                 <h3>{result.filename}</h3>
+                {hasDisagreement(result.responses) && !strongEvaluations[result.filename] && (
+                  <button
+                    className="evaluate-strongly-btn"
+                    onClick={() => handleStrongEvaluation(result.filename, getOriginalFile(result.filename))}
+                    disabled={strongEvaluationLoading[result.filename]}
+                  >
+                    {strongEvaluationLoading[result.filename] ? (
+                      <div className="loading-small">
+                        <div className="spinner-small"></div>
+                        Evaluating...
+                      </div>
+                    ) : (
+                      '🚀 Evaluate Strongly'
+                    )}
+                  </button>
+                )}
               </div>
 
               {result.error ? (
@@ -298,26 +371,61 @@ function App() {
                   Error processing this image: {result.error}
                 </div>
               ) : (
-                <div className="responses-grid">
-                  {result.responses.map((response, responseIndex) => (
-                    <div key={responseIndex} className={getResponseCardClass(response)}>
-                      <div className="response-header">
-                        <span className="model-name">{response.model}</span>
-                        {getStatusIcon(response)}
+                <>
+                  <div className="responses-grid">
+                    {result.responses.map((response, responseIndex) => (
+                      <div key={responseIndex} className={getResponseCardClass(response)}>
+                        <div className="response-header">
+                          <span className="model-name">{response.model}</span>
+                          {getStatusIcon(response)}
+                        </div>
+                        
+                        <div className="response-text">
+                          {response.success ? (
+                            response.response
+                          ) : (
+                            <span className="error-text">
+                              Error: {response.error}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      
-                      <div className="response-text">
-                        {response.success ? (
-                          response.response
-                        ) : (
-                          <span className="error-text">
-                            Error: {response.error}
-                          </span>
-                        )}
+                    ))}
+                  </div>
+
+                  {/* Strong Evaluation Results */}
+                  {strongEvaluations[result.filename] && (
+                    <div className="strong-evaluation-section">
+                      <div className="strong-evaluation-header">
+                        <h4>🚀 Strong Evaluation Results</h4>
+                        <span className="strong-evaluation-badge">Powerful Models</span>
+                      </div>
+                      <div className="responses-grid">
+                        {strongEvaluations[result.filename].responses.map((response, responseIndex) => (
+                          <div key={responseIndex} className={`${getResponseCardClass(response)} powerful-model`}>
+                            <div className="response-header">
+                              <span className="model-name">
+                                {response.model} 
+                                <span className="powerful-badge">🚀</span>
+                              </span>
+                              {getStatusIcon(response)}
+                            </div>
+                            
+                            <div className="response-text">
+                              {response.success ? (
+                                response.response
+                              ) : (
+                                <span className="error-text">
+                                  Error: {response.error}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
           ))}

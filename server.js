@@ -377,6 +377,140 @@ The filenames are: ${filenames.join(', ')}`
   }
 }
 
+// NEW: Powerful model functions for strong evaluation
+async function callOpenAIO3(imagePath, prompt) {
+  console.log('🔴🚀 OpenAI O3: Starting API call...');
+  console.log('- Model: o3');
+  console.log('- Image path:', imagePath);
+  console.log('- Prompt:', prompt || 'Default prompt');
+  
+  try {
+    const base64Image = imageToBase64(imagePath);
+    console.log('- Image converted to base64, length:', base64Image.length);
+    
+    const response = await openai.chat.completions.create({
+      model: "o3",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            }
+          ]
+        }
+      ],
+      response_format: {
+        type: "text"
+      },
+      reasoning_effort: "high"
+    });
+    
+    console.log('🔴🚀 OpenAI O3: Response received');
+    console.log('- Response:', response.choices[0].message.content);
+    
+    return {
+      success: true,
+      response: response.choices[0].message.content,
+      model: "o3",
+      tier: "powerful"
+    };
+  } catch (error) {
+    console.error('🔴🚀 OpenAI O3: ERROR -', error.message);
+    console.error('- Full error:', error);
+    return {
+      success: false,
+      error: error.message,
+      model: "o3",
+      tier: "powerful"
+    };
+  }
+}
+
+async function callClaudeOpus(imagePath, prompt) {
+  console.log('🟣🚀 Claude Opus: Starting API call...');
+  console.log('- Model: claude-opus-4-20250514');
+  console.log('- Image path:', imagePath);
+  console.log('- Prompt:', prompt || 'Default prompt');
+  
+  try {
+    const imageBuffer = fs.readFileSync(imagePath);
+    const base64Image = imageBuffer.toString('base64');
+    const fileExtension = getFileExtension(imagePath);
+    
+    console.log('- Image converted to base64, length:', base64Image.length);
+    console.log('- File extension:', fileExtension);
+    
+    const response = await anthropic.messages.create({
+      model: "claude-opus-4-20250514",
+      max_tokens: 16000,
+      thinking: {
+        type: "enabled",
+        budget_tokens: 15000
+      },
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: `image/${fileExtension}`,
+                data: base64Image
+              }
+            },
+            {
+              type: "text",
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
+            }
+          ]
+        }
+      ]
+    });
+    
+    console.log('🟣🚀 Claude Opus: Response received');
+    
+    // Handle both thinking and text blocks
+    let responseText = '';
+    let thinkingSummary = '';
+    
+    for (const block of response.content) {
+      if (block.type === "thinking") {
+        thinkingSummary = block.thinking;
+        console.log('- Thinking summary:', thinkingSummary.substring(0, 100) + '...');
+      } else if (block.type === "text") {
+        responseText = block.text;
+        console.log('- Response:', responseText);
+      }
+    }
+    
+    return {
+      success: true,
+      response: responseText,
+      thinking: thinkingSummary,
+      model: "claude-opus-4-20250514",
+      tier: "powerful"
+    };
+  } catch (error) {
+    console.error('🟣🚀 Claude Opus: ERROR -', error.message);
+    console.error('- Full error:', error);
+    return {
+      success: false,
+      error: error.message,
+      model: "claude-opus-4-20250514",
+      tier: "powerful"
+    };
+  }
+}
+
 // Helper function to parse batch responses and split them by image
 function parseBatchResponse(batchResponse, filenames) {
   if (!batchResponse.success) {
@@ -675,6 +809,70 @@ app.post('/api/analyze-batch', upload.array('images', 5), async (req, res) => {
       });
       
       res.status(500).json({ error: 'Failed to process images in batch' });
+    }
+  } catch (error) {
+    console.error('💥 Server error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// NEW: Strong evaluation endpoint for disagreements
+app.post('/api/evaluate-strongly', upload.single('image'), async (req, res) => {
+  console.log('\n🚀🔥 === STRONG EVALUATION REQUEST ===');
+  console.log('- Timestamp:', new Date().toISOString());
+  console.log('- File received:', req.file?.originalname || 'None');
+  console.log('- Prompt:', req.body.prompt || 'None');
+  
+  try {
+    if (!req.file) {
+      console.log('❌ No file uploaded');
+      return res.status(400).json({ error: 'No image uploaded' });
+    }
+
+    const { prompt } = req.body;
+    const imagePath = req.file.path;
+    
+    console.log(`\n📁 Processing file for strong evaluation: ${req.file.originalname}`);
+    console.log('- File path:', imagePath);
+    console.log('- File size:', req.file.size);
+    console.log('- MIME type:', req.file.mimetype);
+    
+    try {
+      // Call powerful models concurrently
+      console.log('\n🔄🚀 Starting concurrent POWERFUL API calls...');
+      const [o3Result, opusResult] = await Promise.all([
+        callOpenAIO3(imagePath, prompt),
+        callClaudeOpus(imagePath, prompt)
+      ]);
+
+      console.log('\n📊🚀 All POWERFUL API calls completed');
+      console.log('- OpenAI O3 success:', o3Result.success);
+      console.log('- Claude Opus success:', opusResult.success);
+
+      const allResponses = [o3Result, opusResult];
+      const analyzedResponses = analyzeResponses(allResponses);
+
+      // Clean up uploaded file
+      fs.unlinkSync(imagePath);
+      console.log('🗑️ Cleaned up uploaded file');
+
+      console.log('\n✅🚀 Strong evaluation complete, sending results...');
+      
+      res.json({ 
+        filename: req.file.originalname,
+        responses: analyzedResponses,
+        strongEvaluation: true
+      });
+      
+    } catch (error) {
+      console.error('💥 Error in strong evaluation:', error);
+      
+      // Clean up uploaded file
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+      
+      res.status(500).json({ error: 'Failed to perform strong evaluation' });
     }
   } catch (error) {
     console.error('💥 Server error:', error);
