@@ -3,6 +3,8 @@ import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
 import { FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaCloudUploadAlt } from 'react-icons/fa';
 import './App.css';
+import translations from './translations';
+import { interpolate, interpolateHtml } from './utils';
 
 function App() {
   const [files, setFiles] = useState([]);
@@ -20,7 +22,10 @@ function App() {
     const newFiles = [...files, ...acceptedFiles];
     
     if (newFiles.length > 8) {
-      setError(`Maximum 8 images allowed. You selected ${newFiles.length} images. Please remove ${newFiles.length - 8} images.`);
+      setError(interpolate(translations.maxImagesError, { 
+        count: newFiles.length, 
+        excess: newFiles.length - 8 
+      }));
       return;
     }
     
@@ -42,21 +47,26 @@ function App() {
   };
 
   const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return `0 ${translations.fileSizeUnits.bytes}`;
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = [
+      translations.fileSizeUnits.bytes, 
+      translations.fileSizeUnits.kb, 
+      translations.fileSizeUnits.mb, 
+      translations.fileSizeUnits.gb
+    ];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const handleAnalyze = async () => {
     if (files.length === 0) {
-      setError('Please upload at least one image');
+      setError(translations.minImagesError);
       return;
     }
 
     if (files.length > 8) {
-      setError('Maximum 8 images allowed per analysis. Please remove some images.');
+      setError(translations.maxImagesAnalysisError);
       return;
     }
 
@@ -119,10 +129,10 @@ function App() {
     } catch (err) {
       console.error('Analysis error:', err);
       
-      let errorMessage = 'Failed to analyze images. Please try again.';
+      let errorMessage = translations.analysisError;
       
       if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
-        errorMessage = `Network error - this might be due to too many images (${files.length}) causing timeout. Try with fewer images (max 8) or check your connection.`;
+        errorMessage = interpolate(translations.networkError, { count: files.length });
       } else if (err.response?.data?.error) {
         errorMessage = err.response.data.error;
       } else if (err.message) {
@@ -193,7 +203,7 @@ function App() {
       console.error('Original file not found for:', filename);
       console.log('Available files:', Object.keys(originalFiles));
       console.log('Requested filename (char codes):', Array.from(filename).map(c => `${c}(${c.charCodeAt(0)})`).join(' '));
-      setError(`Original file not found for ${filename}. This might be a character encoding issue. Please try uploading again.`);
+      setError(interpolate(translations.fileNotFoundError, { filename }));
       return;
     }
     
@@ -245,7 +255,10 @@ function App() {
       console.error('Error details:', err.response?.data);
       console.error('Error status:', err.response?.status);
       console.error('Error config:', err.config);
-      setError(`Failed to perform strong evaluation for ${filename}: ${err.response?.data?.error || err.message}`);
+      setError(interpolate(translations.strongEvaluationError, { 
+        filename, 
+        error: err.response?.data?.error || err.message 
+      }));
     } finally {
       // Clear loading state
       setStrongEvaluationLoading(prev => ({
@@ -262,20 +275,20 @@ function App() {
 
   const getStatusIcon = (response) => {
     if (!response.success) {
-      return <FaTimesCircle className="status-icon error" title="Error" />;
+      return <FaTimesCircle className="status-icon error" title={translations.statusTitles.error} />;
     }
     
     switch (response.status) {
       case 'consensus':
-        return <FaCheckCircle className="status-icon success" title="Consensus - All models agree" />;
+        return <FaCheckCircle className="status-icon success" title={translations.statusTitles.consensus} />;
       case 'partial':
-        return <FaExclamationTriangle className="status-icon warning" title="Partial agreement" />;
+        return <FaExclamationTriangle className="status-icon warning" title={translations.statusTitles.partial} />;
       case 'different':
-        return <FaTimesCircle className="status-icon error" title="Different - Models disagree" />;
+        return <FaTimesCircle className="status-icon error" title={translations.statusTitles.different} />;
       case 'error':
-        return <FaExclamationTriangle className="status-icon error" title="Error" />;
+        return <FaExclamationTriangle className="status-icon error" title={translations.statusTitles.error} />;
       default:
-        return <FaExclamationTriangle className="status-icon error" title="Unknown" />;
+        return <FaExclamationTriangle className="status-icon error" title={translations.statusTitles.unknown} />;
     }
   };
 
@@ -299,8 +312,8 @@ function App() {
   return (
     <div className="container">
       <div className="header">
-        <h1>🤖 Multi-LLM Question Solver</h1>
-        <p>Upload images with questions and get answers from OpenAI and Claude</p>
+        <h1>{translations.appTitle}</h1>
+        <p>{translations.appDescription}</p>
       </div>
 
       <div className="upload-section">
@@ -312,21 +325,21 @@ function App() {
           <FaCloudUploadAlt size={48} color="#667eea" />
           <div className="dropzone-text">
             {isDragActive
-              ? 'Drop the images here...'
-              : 'Drag & drop images here, or click to select files'
+              ? translations.dragDropActive
+              : translations.dragDropText
             }
           </div>
           <div className="dropzone-subtext">
-            Supports JPEG, PNG, GIF, WebP up to 10MB each (Max 8 images)
+            {translations.supportedFormats}
             {files.length > 0 && (
-              <span className="file-counter"> • {files.length}/8 files selected</span>
+              <span className="file-counter"> • {files.length}/8 {translations.fileCounter}</span>
             )}
           </div>
         </div>
 
         {files.length > 0 && (
           <div className="file-list">
-            <h4>Selected Files:</h4>
+            <h4>{translations.selectedFiles}</h4>
             {files.map((file, index) => (
               <div key={index} className="file-item">
                 <div>
@@ -337,7 +350,7 @@ function App() {
                   onClick={() => removeFile(index)}
                   className="remove-file"
                 >
-                  Remove
+                  {translations.removeFile}
                 </button>
               </div>
             ))}
@@ -356,18 +369,18 @@ function App() {
                   className="batch-mode-checkbox"
                 />
                 <span className="batch-mode-text">
-                  🚀 <strong>Batch Mode</strong> - Process all images in 2 API calls instead of {files.length * 2}
+                  🚀 <strong>{translations.batchMode}</strong> - {interpolate(translations.batchModeDescription, { total: files.length * 2 })}
                 </span>
               </label>
             </div>
             <div className="batch-mode-info">
               {batchMode ? (
                 <span className="batch-mode-enabled">
-                  ✅ Enabled: Faster processing, lower costs, single combined analysis
+                  {translations.batchModeEnabled}
                 </span>
               ) : (
                 <span className="batch-mode-disabled">
-                  ⚠️ Disabled: Each image processed separately (more API calls)
+                  {translations.batchModeDisabled}
                 </span>
               )}
             </div>
@@ -376,7 +389,7 @@ function App() {
 
         <textarea
           className="prompt-input"
-          placeholder="Optional: Add a custom prompt or question (leave empty for default analysis)"
+          placeholder={translations.promptPlaceholder}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
         />
@@ -389,15 +402,15 @@ function App() {
           {loading ? (
             <div className="loading">
               <div className="spinner"></div>
-              Analyzing with AI models...
+              {translations.analyzingText}
             </div>
           ) : (
             <>
               {batchMode && files.length > 1 
-                ? `🚀 Analyze ${files.length} Images (Batch Mode)`
+                ? interpolate(translations.analyzeButtonBatch, { count: files.length })
                 : files.length > 1 
-                  ? `Analyze ${files.length} Images (Individual Mode)`
-                  : 'Analyze Image'
+                  ? interpolate(translations.analyzeButtonIndividual, { count: files.length })
+                  : translations.analyzeButton
               }
             </>
           )}
@@ -419,32 +432,37 @@ function App() {
       {results.length > 0 && (
         <div className="results-section">
           <h2 style={{ color: 'white', textAlign: 'center', marginBottom: '20px' }}>
-            Analysis Results
+            {translations.analysisResults}
           </h2>
           
           {batchInfo && (
             <div className={`batch-info-card ${batchInfo.enabled ? 'batch-success' : 'batch-individual'}`}>
               {batchInfo.enabled ? (
                 <div className="batch-success-content">
-                  <h3>🚀 Batch Processing Used!</h3>
-                  <p>
-                    Processed <strong>{batchInfo.totalImages} images</strong> with just <strong>2 API calls</strong> 
-                    (saved <strong>{batchInfo.apiCallsSaved} API calls</strong>!)
-                  </p>
+                  <h3>{translations.batchProcessingUsed}</h3>
+                  <p dangerouslySetInnerHTML={{
+                    __html: interpolateHtml(translations.batchProcessingDescription, {
+                      totalImages: batchInfo.totalImages,
+                      savedCalls: batchInfo.apiCallsSaved
+                    })
+                  }} />
                   <div className="batch-benefits">
-                    <span className="benefit">⚡ Faster processing</span>
-                    <span className="benefit">💰 Lower costs</span>
-                    <span className="benefit">🧠 Better cross-image analysis</span>
+                    <span className="benefit">{translations.batchBenefits.faster}</span>
+                    <span className="benefit">{translations.batchBenefits.cheaper}</span>
+                    <span className="benefit">{translations.batchBenefits.better}</span>
                   </div>
                 </div>
               ) : (
                 <div className="batch-individual-content">
-                  <h3>📊 Individual Processing Used</h3>
-                  <p>
-                    Processed <strong>{batchInfo.totalImages} images</strong> with <strong>{batchInfo.totalApiCalls} API calls</strong>
-                  </p>
+                  <h3>{translations.individualProcessingUsed}</h3>
+                  <p dangerouslySetInnerHTML={{
+                    __html: interpolateHtml(translations.individualProcessingDescription, {
+                      totalImages: batchInfo.totalImages,
+                      totalApiCalls: batchInfo.totalApiCalls
+                    })
+                  }} />
                   <p className="batch-tip">
-                    💡 Tip: Enable batch mode for multiple images to save API calls and get faster results!
+                    {translations.batchModeTip}
                   </p>
                 </div>
               )}
@@ -464,10 +482,10 @@ function App() {
                     {strongEvaluationLoading[result.filename] ? (
                       <div className="loading-small">
                         <div className="spinner-small"></div>
-                        Evaluating...
+                        {translations.evaluating}
                       </div>
                     ) : (
-                      '🚀 Evaluate Strongly'
+                      translations.evaluateStrongly
                     )}
                   </button>
                 )}
@@ -475,7 +493,7 @@ function App() {
 
               {result.error ? (
                 <div className="error-text">
-                  Error processing this image: {result.error}
+                  {interpolate(translations.errorProcessingImage, { error: result.error })}
                 </div>
               ) : (
                 <>
@@ -492,7 +510,7 @@ function App() {
                             response.response
                           ) : (
                             <span className="error-text">
-                              Error: {response.error}
+                              {interpolate(translations.errorGeneral, { error: response.error })}
                             </span>
                           )}
                         </div>
@@ -504,8 +522,8 @@ function App() {
                   {strongEvaluations[result.filename] && (
                     <div className="strong-evaluation-section">
                       <div className="strong-evaluation-header">
-                        <h4>🚀 Strong Evaluation Results</h4>
-                        <span className="strong-evaluation-badge">Powerful Models</span>
+                        <h4>{translations.strongEvaluationResults}</h4>
+                        <span className="strong-evaluation-badge">{translations.powerfulModels}</span>
                       </div>
                       <div className="responses-grid">
                         {strongEvaluations[result.filename].responses.map((response, responseIndex) => (
@@ -523,7 +541,7 @@ function App() {
                                 response.response
                               ) : (
                                 <span className="error-text">
-                                  Error: {response.error}
+                                  {interpolate(translations.errorGeneral, { error: response.error })}
                                 </span>
                               )}
                             </div>
