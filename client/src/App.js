@@ -106,9 +106,11 @@ function App() {
     
     switch (response.status) {
       case 'consensus':
-        return <FaCheckCircle className="status-icon success" title="Consensus" />;
+        return <FaCheckCircle className="status-icon success" title="Consensus - All models agree" />;
+      case 'partial':
+        return <FaExclamationTriangle className="status-icon warning" title="Partial agreement" />;
       case 'different':
-        return <FaTimesCircle className="status-icon error" title="Different" />;
+        return <FaTimesCircle className="status-icon error" title="Different - Models disagree" />;
       case 'error':
         return <FaExclamationTriangle className="status-icon error" title="Error" />;
       default:
@@ -122,6 +124,8 @@ function App() {
     switch (response.status) {
       case 'consensus':
         return 'response-card consensus';
+      case 'partial':
+        return 'response-card partial';
       case 'different':
         return 'response-card different';
       case 'error':

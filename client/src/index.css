@@ -194,6 +194,11 @@ code {
   background: #f0fff4;
 }
 
+.response-card.partial {
+  border-color: #ed8936;
+  background: #fffaf0;
+}
+
 .response-card.different {
   border-color: #f56565;
   background: #fff5f5;
@@ -223,6 +228,10 @@ code {
 
 .status-icon.success {
   color: #48bb78;
+}
+
+.status-icon.warning {
+  color: #ed8936;
 }
 
 .status-icon.error {

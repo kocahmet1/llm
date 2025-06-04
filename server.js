@@ -146,7 +146,18 @@ async function callOpenAIBatch(imagePaths, filenames, prompt) {
     const content = [
       {
         type: "text",
-        text: prompt || `I'm sending you ${imagePaths.length} images with questions. Please analyze each image and provide answers. For each image, start your response with "Image [filename]: " and then provide the answer. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide explanations, reasoning, or additional text beyond the answers.`
+        text: prompt || `I'm sending you ${imagePaths.length} images with questions. Please analyze each image and provide answers. 
+
+IMPORTANT: Format your response as follows:
+Image ${filenames[0]}: [answer]
+Image ${filenames[1]}: [answer]
+${filenames.length > 2 ? `Image ${filenames[2]}: [answer]` : ''}
+${filenames.length > 3 ? `Image ${filenames[3]}: [answer]` : ''}
+${filenames.length > 4 ? `Image ${filenames[4]}: [answer]` : ''}
+
+For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). 
+For math questions, respond with ONLY the correct numerical answer. 
+Do not provide explanations, reasoning, or additional text beyond the answers.`
       }
     ];
 
@@ -300,7 +311,18 @@ async function callClaudeBatch(imagePaths, filenames, prompt) {
     // Add the text prompt
     content.push({
       type: "text",
-      text: prompt || `I'm sending you ${imagePaths.length} images with questions. Please analyze each image and provide answers. For each image, start your response with "Image [filename]: " and then provide the answer. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide explanations, reasoning, or additional text beyond the answers.
+      text: prompt || `I'm sending you ${imagePaths.length} images with questions. Please analyze each image and provide answers. 
+
+IMPORTANT: Format your response as follows:
+Image ${filenames[0]}: [answer]
+Image ${filenames[1]}: [answer]
+${filenames.length > 2 ? `Image ${filenames[2]}: [answer]` : ''}
+${filenames.length > 3 ? `Image ${filenames[3]}: [answer]` : ''}
+${filenames.length > 4 ? `Image ${filenames[4]}: [answer]` : ''}
+
+For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). 
+For math questions, respond with ONLY the correct numerical answer. 
+Do not provide explanations, reasoning, or additional text beyond the answers.
 
 The filenames are: ${filenames.join(', ')}`
     });
@@ -370,26 +392,56 @@ function parseBatchResponse(batchResponse, filenames) {
   const responseText = batchResponse.response;
   const results = [];
   
-  // Try to split response by filenames
-  filenames.forEach(filename => {
-    // Look for patterns like "Image filename:" or just the filename
+  // Enhanced parsing logic
+  filenames.forEach((filename, index) => {
+    let extractedResponse = '';
+    
+    // Try multiple patterns to extract individual responses
     const patterns = [
+      // Pattern 1: "Image filename: answer"
       new RegExp(`Image\\s+${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:([^]*?)(?=Image\\s+\\w|$)`, 'i'),
-      new RegExp(`${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:([^]*?)(?=\\w+\\.\\w+\\s*:|$)`, 'i')
+      // Pattern 2: "filename: answer"
+      new RegExp(`${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:([^]*?)(?=\\w+\\.\\w+\\s*:|$)`, 'i'),
+      // Pattern 3: Line-by-line parsing for numbered responses
+      new RegExp(`(?:^|\\n)\\s*${index + 1}[.)\\s]+([A-Z])(?=\\s|$)`, 'im'),
+      // Pattern 4: Just extract single letter answers in sequence
+      new RegExp(`(?:^|\\n|\\s)([A-Z])(?=\\s|$|\\n)`, 'g')
     ];
     
-    let extractedResponse = '';
-    for (const pattern of patterns) {
-      const match = responseText.match(pattern);
-      if (match) {
+    // Try pattern-based extraction first
+    for (let i = 0; i < patterns.length - 1; i++) {
+      const match = responseText.match(patterns[i]);
+      if (match && match[1]) {
         extractedResponse = match[1].trim();
+        console.log(`Pattern ${i + 1} matched for ${filename}: "${extractedResponse}"`);
         break;
       }
     }
     
-    // If no specific pattern found, include the entire response for now
+    // If no pattern worked, try to extract answers by position (for simple letter answers)
+    if (!extractedResponse || extractedResponse.length > 10) {
+      const letterMatches = responseText.match(/\b[A-D]\b/g);
+      if (letterMatches && letterMatches[index]) {
+        extractedResponse = letterMatches[index];
+        console.log(`Position-based extraction for ${filename}: "${extractedResponse}"`);
+      }
+    }
+    
+    // If still no response, try splitting by lines and taking the appropriate line
+    if (!extractedResponse) {
+      const lines = responseText.split(/\n+/).filter(line => line.trim().length > 0);
+      if (lines[index]) {
+        // Extract just the answer part (usually a single letter)
+        const answerMatch = lines[index].match(/\b([A-D])\b/);
+        extractedResponse = answerMatch ? answerMatch[1] : lines[index].trim();
+        console.log(`Line-based extraction for ${filename}: "${extractedResponse}"`);
+      }
+    }
+    
+    // Final fallback: use the entire response but warn about it
     if (!extractedResponse) {
       extractedResponse = responseText;
+      console.log(`Fallback: Using entire response for ${filename}`);
     }
     
     results.push({
@@ -418,28 +470,58 @@ function analyzeResponses(responses) {
     return responses.map(r => ({ ...r, status: 'error' }));
   }
   
-  // Simple similarity check for two models
+  // Enhanced comparison logic for question answers
   const responseTexts = successfulResponses.map(r => r.response.toLowerCase().trim());
+  console.log('- Response texts for comparison:', responseTexts);
+  
   const analyzed = successfulResponses.map((response, index) => {
     const currentText = responseTexts[index];
+    
+    // Count how many responses match this one
     const matches = responseTexts.filter(text => {
-      // Simple word overlap similarity (you can improve this)
+      // For single letter answers (A, B, C, D)
+      if (currentText.length === 1 && text.length === 1) {
+        return currentText === text;
+      }
+      
+      // For short answers (exact match)
+      if (currentText.length <= 5 && text.length <= 5) {
+        return currentText === text;
+      }
+      
+      // For longer responses, use similarity
       const words1 = currentText.split(/\s+/);
       const words2 = text.split(/\s+/);
       const commonWords = words1.filter(word => words2.includes(word));
-      return commonWords.length / Math.max(words1.length, words2.length) > 0.5;
+      const similarity = commonWords.length / Math.max(words1.length, words2.length);
+      
+      // Require higher similarity for consensus (80% instead of 50%)
+      return similarity > 0.8;
     });
     
-    console.log(`- ${response.model}: ${matches.length} matches`);
+    console.log(`- ${response.model}: "${currentText}" has ${matches.length} matches out of ${responseTexts.length} responses`);
+    
+    // Determine status based on matches
+    let status;
+    if (matches.length === responseTexts.length) {
+      status = 'consensus'; // All responses match
+    } else if (matches.length > 1) {
+      status = 'partial'; // Some responses match
+    } else {
+      status = 'different'; // No other responses match
+    }
     
     return {
       ...response,
       matchCount: matches.length,
-      status: matches.length >= 1 ? 'consensus' : 'different'
+      status: status
     };
   });
   
-  return analyzed;
+  // If we have failed responses, add them back with error status
+  const failedResponses = responses.filter(r => !r.success).map(r => ({ ...r, status: 'error' }));
+  
+  return [...analyzed, ...failedResponses];
 }
 
 // API Routes
