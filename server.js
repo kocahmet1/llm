@@ -123,7 +123,7 @@ async function callOpenAI(imagePath, prompt) {
           content: [
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with the correct option letter followed by the option content in parentheses (e.g., 'A (15.5)' or 'B (The photosynthesis process)'). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
             },
             {
               type: "image_url",
@@ -179,7 +179,7 @@ ${filenames.length > 2 ? `Image ${filenames[2]}: [answer]` : ''}
 ${filenames.length > 3 ? `Image ${filenames[3]}: [answer]` : ''}
 ${filenames.length > 4 ? `Image ${filenames[4]}: [answer]` : ''}
 
-For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). 
+For multiple choice questions, respond with the correct option letter followed by the option content in parentheses (e.g., 'A (15.5)' or 'B (The photosynthesis process)'). 
 For math questions, respond with ONLY the correct numerical answer. 
 Do not provide explanations, reasoning, or additional text beyond the answers.`
       }
@@ -266,7 +266,7 @@ async function callClaude(imagePath, prompt) {
             },
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with the correct option letter followed by the option content in parentheses (e.g., 'A (15.5)' or 'B (The photosynthesis process)'). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
             }
           ]
         }
@@ -343,7 +343,7 @@ ${filenames.length > 2 ? `Image ${filenames[2]}: [answer]` : ''}
 ${filenames.length > 3 ? `Image ${filenames[3]}: [answer]` : ''}
 ${filenames.length > 4 ? `Image ${filenames[4]}: [answer]` : ''}
 
-For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). 
+For multiple choice questions, respond with the correct option letter followed by the option content in parentheses (e.g., 'A (15.5)' or 'B (The photosynthesis process)'). 
 For math questions, respond with ONLY the correct numerical answer. 
 Do not provide explanations, reasoning, or additional text beyond the answers.
 
@@ -420,7 +420,7 @@ async function callOpenAIO3(imagePath, prompt) {
           content: [
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with the correct option letter followed by the option content in parentheses (e.g., 'A (15.5)' or 'B (The photosynthesis process)'). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
             },
             {
               type: "image_url",
@@ -493,7 +493,7 @@ async function callClaudeOpus(imagePath, prompt) {
             },
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with the correct option letter followed by the option content in parentheses (e.g., 'A (15.5)' or 'B (The photosynthesis process)'). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
             }
           ]
         }
@@ -566,10 +566,10 @@ function parseBatchResponse(batchResponse, filenames) {
       new RegExp(`Image\\s+${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:([^]*?)(?=Image\\s+\\w|$)`, 'i'),
       // Pattern 2: "filename: answer"
       new RegExp(`${filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:([^]*?)(?=\\w+\\.\\w+\\s*:|$)`, 'i'),
-      // Pattern 3: Line-by-line parsing for numbered responses
-      new RegExp(`(?:^|\\n)\\s*${index + 1}[.)\\s]+([A-Z])(?=\\s|$)`, 'im'),
-      // Pattern 4: Just extract single letter answers in sequence
-      new RegExp(`(?:^|\\n|\\s)([A-Z])(?=\\s|$|\\n)`, 'g')
+      // Pattern 3: Line-by-line parsing for numbered responses with option content
+      new RegExp(`(?:^|\\n)\\s*${index + 1}[.)\\s]+([A-Z]\\s*\\([^)]+\\)|[A-Z])(?=\\s|$|\\n)`, 'im'),
+      // Pattern 4: Extract letter with content in parentheses or just letter answers
+      new RegExp(`(?:^|\\n|\\s)([A-Z]\\s*\\([^)]+\\)|[A-Z])(?=\\s|$|\\n)`, 'g')
     ];
     
     // Try pattern-based extraction first
@@ -582,12 +582,18 @@ function parseBatchResponse(batchResponse, filenames) {
       }
     }
     
-    // If no pattern worked, try to extract answers by position (for simple letter answers)
-    if (!extractedResponse || extractedResponse.length > 10) {
+    // If no pattern worked, try to extract answers by position (for letter answers with or without content)
+    if (!extractedResponse || extractedResponse.length > 50) {
+      // Try to match letter with content first, then fallback to simple letters
+      const contentMatches = responseText.match(/\b[A-D]\s*\([^)]+\)/g);
       const letterMatches = responseText.match(/\b[A-D]\b/g);
-      if (letterMatches && letterMatches[index]) {
+      
+      if (contentMatches && contentMatches[index]) {
+        extractedResponse = contentMatches[index];
+        console.log(`Position-based content extraction for ${filename}: "${extractedResponse}"`);
+      } else if (letterMatches && letterMatches[index]) {
         extractedResponse = letterMatches[index];
-        console.log(`Position-based extraction for ${filename}: "${extractedResponse}"`);
+        console.log(`Position-based letter extraction for ${filename}: "${extractedResponse}"`);
       }
     }
     
@@ -595,9 +601,10 @@ function parseBatchResponse(batchResponse, filenames) {
     if (!extractedResponse) {
       const lines = responseText.split(/\n+/).filter(line => line.trim().length > 0);
       if (lines[index]) {
-        // Extract just the answer part (usually a single letter)
-        const answerMatch = lines[index].match(/\b([A-D])\b/);
-        extractedResponse = answerMatch ? answerMatch[1] : lines[index].trim();
+        // Extract the answer part (letter with content or just letter)
+        const contentMatch = lines[index].match(/\b([A-D]\s*\([^)]+\))/);
+        const letterMatch = lines[index].match(/\b([A-D])\b/);
+        extractedResponse = contentMatch ? contentMatch[1] : (letterMatch ? letterMatch[1] : lines[index].trim());
         console.log(`Line-based extraction for ${filename}: "${extractedResponse}"`);
       }
     }
