@@ -100,7 +100,7 @@ async function callOpenAI(imagePath, prompt) {
           content: [
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with the correct option letter followed by the content in parentheses (e.g., 'A (15.5)' or 'B (The correct formula)'). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
             },
             {
               type: "image_url",
@@ -156,7 +156,7 @@ ${filenames.length > 2 ? `Image ${filenames[2]}: [answer]` : ''}
 ${filenames.length > 3 ? `Image ${filenames[3]}: [answer]` : ''}
 ${filenames.length > 4 ? `Image ${filenames[4]}: [answer]` : ''}
 
-For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). 
+For multiple choice questions, respond with the correct option letter followed by the content in parentheses (e.g., 'A (15.5)' or 'B (The correct formula)'). 
 For math questions, respond with ONLY the correct numerical answer. 
 Do not provide explanations, reasoning, or additional text beyond the answers.`
       }
@@ -243,7 +243,7 @@ async function callClaude(imagePath, prompt) {
             },
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with the correct option letter followed by the content in parentheses (e.g., 'A (15.5)' or 'B (The correct formula)'). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text."
             }
           ]
         }
@@ -321,11 +321,9 @@ ${filenames.length > 2 ? `Image ${filenames[2]}: [answer]` : ''}
 ${filenames.length > 3 ? `Image ${filenames[3]}: [answer]` : ''}
 ${filenames.length > 4 ? `Image ${filenames[4]}: [answer]` : ''}
 
-For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). 
+For multiple choice questions, respond with the correct option letter followed by the content in parentheses (e.g., 'A (15.5)' or 'B (The correct formula)'). 
 For math questions, respond with ONLY the correct numerical answer. 
-Do not provide explanations, reasoning, or additional text beyond the answers.
-
-The filenames are: ${filenames.join(', ')}`
+Do not provide explanations, reasoning, or additional text beyond the answers.`
     });
     
     const response = await anthropic.messages.create({
@@ -397,7 +395,7 @@ async function callOpenAIO3(imagePath, prompt) {
           content: [
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with the correct option letter followed by the content in parentheses (e.g., 'A (15.5)' or 'B (The correct formula)'). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
             },
             {
               type: "image_url",
@@ -471,7 +469,7 @@ async function callClaudeOpus(imagePath, prompt) {
             },
             {
               type: "text",
-              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with ONLY the correct option letter (A, B, C, or D). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
+              text: prompt || "Analyze this image and answer any questions you see. For multiple choice questions, respond with the correct option letter followed by the content in parentheses (e.g., 'A (15.5)' or 'B (The correct formula)'). For math questions, respond with ONLY the correct numerical answer. Do not provide any explanations, reasoning, or additional text. This is a strong evaluation to resolve disagreement between other models."
             }
           ]
         }

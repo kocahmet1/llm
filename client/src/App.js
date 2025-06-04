@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
-import { FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
+import { FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaCloudUploadAlt } from 'react-icons/fa';
 import './App.css';
 
 function App() {
@@ -15,17 +15,6 @@ function App() {
   const [strongEvaluations, setStrongEvaluations] = useState({});
   const [strongEvaluationLoading, setStrongEvaluationLoading] = useState({});
   const [originalFiles, setOriginalFiles] = useState({});
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [imageUrls, setImageUrls] = useState({});
-
-  // Cleanup function to revoke object URLs when component unmounts
-  useEffect(() => {
-    return () => {
-      Object.values(imageUrls).forEach(url => {
-        URL.revokeObjectURL(url);
-      });
-    };
-  }, []);
 
   const onDrop = useCallback((acceptedFiles) => {
     const newFiles = [...files, ...acceptedFiles];
@@ -37,16 +26,7 @@ function App() {
     
     setFiles(newFiles);
     setError('');
-
-    // Create object URLs for thumbnails
-    const newImageUrls = { ...imageUrls };
-    acceptedFiles.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        newImageUrls[file.name] = URL.createObjectURL(file);
-      }
-    });
-    setImageUrls(newImageUrls);
-  }, [files, imageUrls]);
+  }, [files]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -58,14 +38,6 @@ function App() {
   });
 
   const removeFile = (index) => {
-    const fileToRemove = files[index];
-    // Revoke object URL to prevent memory leaks
-    if (imageUrls[fileToRemove.name]) {
-      URL.revokeObjectURL(imageUrls[fileToRemove.name]);
-      const updatedUrls = { ...imageUrls };
-      delete updatedUrls[fileToRemove.name];
-      setImageUrls(updatedUrls);
-    }
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -324,17 +296,6 @@ function App() {
     }
   };
 
-  const openImageModal = (filename) => {
-    const imageUrl = imageUrls[filename];
-    if (imageUrl) {
-      setSelectedImage({ filename, url: imageUrl });
-    }
-  };
-
-  const closeImageModal = () => {
-    setSelectedImage(null);
-  };
-
   return (
     <div className="container">
       <div className="header">
@@ -493,18 +454,7 @@ function App() {
           {results.map((result, index) => (
             <div key={index} className="result-card">
               <div className="result-header">
-                <div className="result-title-container">
-                  {imageUrls[result.filename] && (
-                    <img
-                      src={imageUrls[result.filename]}
-                      alt={result.filename}
-                      className="result-thumbnail"
-                      onClick={() => openImageModal(result.filename)}
-                      title="Click to view full image"
-                    />
-                  )}
-                  <h3>{result.filename}</h3>
-                </div>
+                <h3>{result.filename}</h3>
                 {hasDisagreement(result.responses) && !strongEvaluations[result.filename] && (
                   <button
                     className="evaluate-strongly-btn"
@@ -586,23 +536,6 @@ function App() {
               )}
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Image Modal */}
-      {selectedImage && (
-        <div className="image-modal-overlay" onClick={closeImageModal}>
-          <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="image-modal-close" onClick={closeImageModal}>
-              <FaTimes />
-            </button>
-            <img
-              src={selectedImage.url}
-              alt={selectedImage.filename}
-              className="image-modal-image"
-            />
-            <div className="image-modal-filename">{selectedImage.filename}</div>
-          </div>
         </div>
       )}
     </div>
