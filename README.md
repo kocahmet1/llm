@@ -16,7 +16,6 @@ A powerful web application that analyzes images with questions using two AI mode
 - **Production Ready**: Optimized for deployment on Render.com
 - **Rate Limited**: Built-in protection against abuse
 - **Error Handling**: Robust error handling and user feedback
-- **Automatic Resizing**: Images are resized to 25% of their original dimensions before analysis
 
 ## 🎯 How It Works
 
@@ -225,7 +224,7 @@ Health check endpoint.
 
 1. **API Key Errors**: Ensure both API keys are correctly set in environment variables
 2. **File Upload Fails**: Check file size (max 10MB) and format (images only)
-3. **Slow Response**: Large images or complex questions may take longer (images are automatically downsized to speed things up)
+3. **Slow Response**: Large images or complex questions may take longer
 4. **Rate Limiting**: Wait if you've exceeded the request limit
 
 ### Debug Mode
