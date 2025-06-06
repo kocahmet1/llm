@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
@@ -68,10 +69,14 @@ const anthropic = new Anthropic({
 });
 console.log('- Anthropic client initialized');
 
-// Helper function to convert image to base64
-function imageToBase64(filePath) {
-  const imageBuffer = fs.readFileSync(filePath);
-  return imageBuffer.toString('base64');
+// Helper function to resize image to 1/4 size and convert to base64
+async function imageToBase64(filePath) {
+  const image = sharp(filePath);
+  const metadata = await image.metadata();
+  const width = Math.round(metadata.width / 2);
+  const height = Math.round(metadata.height / 2);
+  const buffer = await image.resize(width, height).toBuffer();
+  return buffer.toString('base64');
 }
 
 // Helper function to get file extension
@@ -111,7 +116,7 @@ async function callOpenAI(imagePath, prompt) {
   console.log('- Prompt:', prompt || 'Default prompt');
   
   try {
-    const base64Image = imageToBase64(imagePath);
+    const base64Image = await imageToBase64(imagePath);
     const mediaType = getMediaType(imagePath);
     console.log('- Image converted to base64, length:', base64Image.length);
     
@@ -186,8 +191,8 @@ Do not provide explanations, reasoning, or additional text beyond the answers.`
     ];
 
     // Add all images to the content array
-    imagePaths.forEach((imagePath, index) => {
-      const base64Image = imageToBase64(imagePath);
+    for (const imagePath of imagePaths) {
+      const base64Image = await imageToBase64(imagePath);
       const mediaType = getMediaType(imagePath);
       content.push({
         type: "image_url",
@@ -195,7 +200,7 @@ Do not provide explanations, reasoning, or additional text beyond the answers.`
           url: `data:${mediaType};base64,${base64Image}`
         }
       });
-    });
+    }
 
     const response = await openai.chat.completions.create({
       model: "o4-mini",
@@ -239,8 +244,7 @@ async function callClaude(imagePath, prompt) {
   console.log('- Prompt:', prompt || 'Default prompt');
   
   try {
-    const imageBuffer = fs.readFileSync(imagePath);
-    const base64Image = imageBuffer.toString('base64');
+    const base64Image = await imageToBase64(imagePath);
     
     console.log('- Image converted to base64, length:', base64Image.length);
     console.log('- Media type will be determined from path');
@@ -317,10 +321,9 @@ async function callClaudeBatch(imagePaths, filenames, prompt) {
     const content = [];
     
     // Add all images to the content array
-    imagePaths.forEach((imagePath, index) => {
-      const imageBuffer = fs.readFileSync(imagePath);
-      const base64Image = imageBuffer.toString('base64');
-      
+    for (const imagePath of imagePaths) {
+      const base64Image = await imageToBase64(imagePath);
+
       content.push({
         type: "image",
         source: {
@@ -329,7 +332,7 @@ async function callClaudeBatch(imagePaths, filenames, prompt) {
           data: base64Image
         }
       });
-    });
+    }
 
     // Add the text prompt
     content.push({
@@ -408,7 +411,7 @@ async function callOpenAIO3(imagePath, prompt) {
   console.log('- Prompt:', prompt || 'Default prompt');
   
   try {
-    const base64Image = imageToBase64(imagePath);
+    const base64Image = await imageToBase64(imagePath);
     const mediaType = getMediaType(imagePath);
     console.log('- Image converted to base64, length:', base64Image.length);
     
@@ -465,8 +468,7 @@ async function callClaudeOpus(imagePath, prompt) {
   console.log('- Prompt:', prompt || 'Default prompt');
   
   try {
-    const imageBuffer = fs.readFileSync(imagePath);
-    const base64Image = imageBuffer.toString('base64');
+    const base64Image = await imageToBase64(imagePath);
     
     console.log('- Image converted to base64, length:', base64Image.length);
     console.log('- Media type will be determined from path');
